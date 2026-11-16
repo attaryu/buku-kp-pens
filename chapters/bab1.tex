@@ -1,96 +1,98 @@
 %============================================================
 % BAB 1: PENDAHULUAN
-%   1.1 Latar Belakang
-%   1.2 Rumusan Masalah
-%   1.3 Batasan Masalah
-%   1.4 Tujuan
-%       1.4.1 Tujuan Proyek [Nama Proyek 1]
-%       1.4.2 Tujuan Proyek [Nama Proyek 2] (hapus jika hanya 1 proyek)
-%   1.5 Manfaat
-%       1.5.1 Manfaat Proyek [Nama Proyek 1]
-%       1.5.2 Manfaat Proyek [Nama Proyek 2] (hapus jika hanya 1 proyek)
-%   1.6 Sistematika Penulisan
 %============================================================
 \chapter{PENDAHULUAN}
 
 \section{LATAR BELAKANG}
 
-Deskripsikan latar belakang pemilihan tempat dan topik kerja praktik. Jelaskan
-konteks industri atau institusi tempat KP dilaksanakan, permasalahan yang ada,
-relevansi dengan program studi, serta gambaran umum proyek yang dikerjakan.
-Latar belakang yang baik mampu menjelaskan urgensi dan motivasi pelaksanaan
-kerja praktik ini.
+Perangkat lunak yang diterapkan dalam lingkungan operasional organisasi modern tidak beroperasi sebagai modul yang terisolasi. Suatu ekosistem sistem informasi umumnya terdiri dari keterpaduan berbagai komponen fungsional, meliputi antarmuka pengguna pada perangkat lapangan maupun web, layanan pemrosesan data terpusat, pengolahan dan verifikasi dokumen, antrean eksekusi tugas, hingga orkestrasi alur kerja otomatis yang saling bertukar informasi secara berkelanjutan. Konsistensi data, keandalan penanganan kegagalan proses, dan keselarasan antarkomponen menjadi faktor krusial dalam menjamin kelancaran operasional. Pemahaman terhadap kompleksitas integrasi sistem tersebut membutuhkan pengalaman implementasi pada lingkungan industri nyata, yang menjadi tujuan utama dari pelaksanaan kerja praktik ini.
+
+Kerja Praktik dilaksanakan di \NamaPerusahaan, sebuah perusahaan rekayasa perangkat lunak dan penyedia solusi teknologi informasi. Selama periode \PeriodeKP, penulis terlibat dalam proses pengembangan dan integrasi sistem pada tiga proyek rekayasa perangkat lunak, yaitu proyek \textit{Mongrid}, sistem operasional \textit{PT Makassar Trans}, dan platform otomatisasi \textit{Nedo Agentic Platform}. Ketiga proyek tersebut menghadirkan tantangan fungsional, integrasi, dan arsitektural yang beragam.
+
+Proyek \textit{Mongrid} merupakan sistem pemantauan infrastruktur kelistrikan yang dirancang untuk memantau kondisi dan keandalan aset penting, seperti gardu dan kubikel listrik. Kebutuhan operasional pada sistem ini meliputi penyajian informasi metrik pemantauan peralatan secara akurat dan tepat waktu, serta pengelolaan alur penanganan tiket insiden atau pemeliharaan secara terstruktur. Tantangan teknis yang dihadapi mencakup penyelarasan aliran data status operasional, validasi input teknis lapangan, serta penyesuaian hak akses dan peran pengguna agar informasi yang ditampilkan sesuai dengan kewenangan operasional masing-masing pihak.
+
+Proyek \textit{PT Makassar Trans} berfokus pada digitalisasi dan integrasi alur kerja logistik penerimaan barang. Alur kerja dimulai dari pencatatan tanda terima operasional di lapangan, verifikasi dokumen fisik berupa rincian muatan barang dan nota tagihan pada sistem operasional terpusat, hingga pengiriman dokumen kepada klien. Pada implementasinya, tantangan operasional muncul pada konsistensi sinkronisasi data tanda terima dan berkas dokumen pendukung antara sistem lapangan dan sistem terpusat, percepatan proses verifikasi dokumen rincian barang melalui bantuan layanan ekstraksi data otomatis, serta penyediaan mekanisme pengiriman dokumen operasional secara asinkron dengan pengelolaan antrean dan pemantauan status pengiriman yang terpantau.
+
+Proyek \textit{Nedo Agentic Platform} berfokus pada pengembangan platform otomatisasi alur kerja berbasis agen cerdas (\textit{agentic workflow}). Platform ini bertujuan untuk mengotomatisasi serangkaian tugas operasional yang saling berkaitan secara adaptif dan terkoordinasi. Tantangan utama dalam pengembangan platform ini terletak pada perancangan orkestrasi alur kerja agen, penanganan eksekusi tugas multi-tahap secara otomatis, serta mitigasi kegagalan proses antar-layanan agar seluruh rangkaian tugas dapat terselesaikan secara konsisten dan mandiri.
+
+Ketiga proyek tersebut menuntut pemahaman menyeluruh terhadap logika bisnis, penanganan aliran data, mekanisme toleransi kesalahan, serta koordinasi antar-layanan pada arsitektur sistem yang sedang berjalan. Berdasarkan hal tersebut, laporan kerja praktik ini disusun untuk mendokumentasikan proses rekayasa perangkat lunak, perancangan fungsional, integrasi alur kerja, serta hasil pengujian fungsional pada proyek \textit{Mongrid}, \textit{PT Makassar Trans}, dan \textit{Nedo Agentic Platform}.
 
 \section{RUMUSAN MASALAH}
 
-Berdasarkan latar belakang yang telah dijelaskan, maka permasalahan yang akan
-dibahas dalam laporan kerja praktik ini dapat dirumuskan sebagai berikut.
+Berdasarkan latar belakang yang telah dipaparkan, permasalahan yang dibahas dalam laporan kerja praktik ini dirumuskan sebagai berikut:
 
 \begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
-  \item Rumusan masalah pertama.
-  \item Rumusan masalah kedua.
-  \item Rumusan masalah ketiga.
+  \item Bagaimana menyajikan data pemantauan kondisi peralatan kelistrikan (gardu dan kubikel) serta memvalidasi alur pengelolaan tiket insiden pada sistem \textit{Mongrid} sesuai dengan hak akses pengguna?
+  \item Bagaimana menyelaraskan alur pencatatan tanda terima operasional pada sistem lapangan proyek \textit{PT Makassar Trans} agar status penyimpanan dan berkas dokumen terintegrasi secara konsisten dengan sistem terpusat?
+  \item Bagaimana menghubungkan berkas dokumen fisik dengan sistem operasional operator serta memanfaatkan alat bantu ekstraksi data dokumen dengan tetap menyediakan mekanisme verifikasi dan koreksi manual?
+  \item Bagaimana mengintegrasikan pengiriman dokumen operasional (tanda terima dan nota tagihan) melalui layanan perpesanan dengan mekanisme antrean dan pemantauan status pengiriman yang andal?
+  \item Bagaimana merancang dan mengimplementasikan mekanisme orkestrasi alur kerja berbasis agen cerdas (\textit{agentic workflow}) pada \textit{Nedo Agentic Platform} agar eksekusi tugas otomatis dapat terkoordinasi secara efektif?
+  \item Bagaimana mengelola penanganan kegagalan proses dan koordinasi data antar-layanan pada alur eksekusi platform otomatisasi tersebut?
 \end{enumerate}
 
 \section{BATASAN MASALAH}
 
-Untuk memfokuskan pembahasan pada laporan kerja praktik ini, maka ditetapkan
-batasan masalah sebagai berikut:
+Agar pembahasan tetap fokus dan terarah, batasan masalah dalam laporan kerja praktik ini ditetapkan sebagai berikut:
 
 \begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
-  \item Pembahasan difokuskan pada kegiatan yang dilakukan selama periode
-        \PeriodeKP\ di \NamaPerusahaan.
-  \item Batasan teknis kedua (misalnya: hanya mencakup sisi frontend/backend).
-  \item Batasan ketiga (aspek yang tidak dibahas dalam laporan ini).
-  \item Periode pengamatan dan keterlibatan dalam proyek dibatasi selama masa
-        kerja praktik.
+  \item Pembahasan dibatasi pada kegiatan rekayasa perangkat lunak yang dilaksanakan selama periode \PeriodeKP\ di \NamaPerusahaan.
+  \item Ruang lingkup proyek dibatasi pada tiga proyek utama, yaitu \textit{Mongrid}, sistem operasional \textit{PT Makassar Trans}, dan \textit{Nedo Agentic Platform}.
+  \item Pada proyek \textit{Mongrid}, pembahasan difokuskan pada modul penyajian data pemantauan infrastruktur kelistrikan (gardu dan kubikel) serta alur pengelolaan tiket insiden pada lingkup tanggung jawab yang diberikan kepada penulis.
+  \item Pada proyek \textit{PT Makassar Trans}, pembahasan difokuskan pada alur pencatatan tanda terima operasional, penyelarasan verifikasi berkas dokumen rincian barang, pemanfaatan alat bantu ekstraksi data dokumen, serta integrasi pengiriman dokumen operasional.
+  \item Pada proyek \textit{Nedo Agentic Platform}, pembahasan difokuskan pada perancangan orkestrasi alur kerja agen cerdas (\textit{agentic workflow}) dan penanganan eksekusi tugas otomatis.
+  \item Layanan ekstraksi data dokumen dan pemrosesan berbasis kecerdasan buatan diposisikan sebagai alat bantu otomatisasi, di mana verifikasi dan persetujuan data tetap melibatkan operator atau aturan bisnis sistem.
+  \item Pengujian yang dibahas difokuskan pada pengujian fungsional dan verifikasi alur kerja pada lingkungan pengujian; pengujian beban menyeluruh dan adopsi operasional jangka panjang tidak dibahas secara mendalam.
+  \item Data operasional riil klien, kredensial sistem, dan informasi sensitif tidak dicantumkan dalam laporan; data yang disajikan menggunakan data uji (\textit{dummy}) untuk kepentingan dokumentasi teknis.
 \end{enumerate}
 
 \section{TUJUAN}
 
-Bagian ini menjelaskan tujuan dari pelaksanaan proyek kerja praktik yang
-dilakukan di \NamaPerusahaan. Tujuan yang dirumuskan tidak hanya menggambarkan
-hasil yang ingin dicapai dari sisi teknis, tetapi juga mencerminkan kontribusi
-sistem terhadap efisiensi kerja dan nilai praktis dalam dunia industri.
+Pelaksanaan kerja praktik di \NamaPerusahaan\ bertujuan untuk mencapai sasaran teknis dan fungsional pada masing-masing proyek yang dikerjakan, dengan rincian sebagai berikut:
 
-% Jika hanya satu proyek, hapus sub-section 1.4.2 dan ubah 1.4.1 jadi narasi langsung.
-\subsection{Tujuan Proyek [Nama Proyek 1]}
+\subsection{Tujuan Proyek Mongrid}
 
 \begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item Tujuan pertama proyek.
-  \item Tujuan kedua proyek.
-  \item Tujuan ketiga proyek.
+  \item Menyediakan antarmuka penyajian data pemantauan infrastruktur kelistrikan yang informatif dan terstruktur untuk memantau kondisi peralatan pada gardu dan kubikel.
+  \item Mengimplementasikan alur pengelolaan tiket insiden dan pemeliharaan yang terintegrasi dengan validasi status dan peran operasional pengguna.
 \end{itemize}
 
-\subsection{Tujuan Proyek [Nama Proyek 2]}
+\subsection{Tujuan Proyek PT Makassar Trans}
 
 \begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item Tujuan pertama proyek kedua.
-  \item Tujuan kedua proyek kedua.
+  \item Menyempurnakan alur pencatatan tanda terima operasional agar status penyimpanan dan integrasi berkas dokumen konsisten dengan sistem terpusat.
+  \item Memfasilitasi proses verifikasi dokumen dan pengisian rincian barang bagi operator melalui penyelarasan data dokumen sumber dan alat bantu ekstraksi data dokumen.
+  \item Mengimplementasikan layanan pengiriman dokumen tanda terima dan nota tagihan secara otomatis dengan mekanisme antrean dan pelacakan status pengiriman yang andal.
+\end{itemize}
+
+\subsection{Tujuan Proyek Nedo Agentic Platform}
+
+\begin{itemize}[leftmargin=*, itemsep=0pt]
+  \item Merancang dan mengimplementasikan mekanisme orkestrasi alur kerja agen cerdas (\textit{agentic workflow}) untuk mendukung eksekusi tugas secara otomatis.
+  \item Membangun penanganan proses dan koordinasi data antar-layanan agar alur otomasi platform dapat berjalan secara andal dan konsisten.
 \end{itemize}
 
 \section{MANFAAT}
 
-Pelaksanaan kerja praktik di \NamaPerusahaan\ tidak hanya bertujuan untuk
-memenuhi kewajiban akademik, tetapi juga memberikan manfaat nyata baik dari
-sisi teknis, operasional, maupun strategis. Berikut adalah manfaat utama dari
-masing-masing proyek:
+Pelaksanaan kerja praktik ini diharapkan memberikan manfaat bagi berbagai pihak, antara lain:
 
-% Jika hanya satu proyek, hapus sub-section 1.5.2 dan ubah 1.5.1 jadi narasi langsung.
-\subsection{Manfaat Proyek [Nama Proyek 1]}
+\subsection{Manfaat bagi Mahasiswa}
 
-\begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item \textbf{Manfaat Pertama.} Deskripsi manfaat pertama.
-  \item \textbf{Manfaat Kedua.} Deskripsi manfaat kedua.
-  \item \textbf{Manfaat Ketiga.} Deskripsi manfaat ketiga.
-\end{itemize}
+Kerja praktik memberikan pengalaman nyata dalam rekayasa perangkat lunak skala industri. Penulis memperoleh pemahaman mendalam mengenai integrasi sistem multi-layanan, pengelolaan aliran data operasional, penanganan proses asinkron, serta arsitektur otomatisasi alur kerja berbasis agen cerdas. Selain itu, kegiatan ini melatih kemampuan analisis teknis, adaptasi pada sistem yang sedang berjalan (\textit{existing codebase}), serta kolaborasi profesional dalam tim rekayasa perangkat lunak.
 
-\subsection{Manfaat Proyek [Nama Proyek 2]}
+\subsection{Manfaat bagi Perusahaan dan Klien}
 
-\begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item \textbf{Manfaat Pertama.} Deskripsi manfaat pertama proyek kedua.
-  \item \textbf{Manfaat Kedua.} Deskripsi manfaat kedua proyek kedua.
-\end{itemize}
+Hasil pekerjaan memberikan kontribusi fungsional nyata terhadap penyempurnaan modul pemantauan dan tiket pada sistem \textit{Mongrid}, peningkatan keterpaduan dan efisiensi alur operasional penerimaan barang pada sistem \textit{PT Makassar Trans}, serta penyediaan fondasi orkestrasi otomatisasi pada \textit{Nedo Agentic Platform}.
+
+\subsection{Manfaat bagi Pembaca}
+
+Laporan ini dapat menjadi referensi dan studi kasus mengenai implementasi rekayasa perangkat lunak terintegrasi di lingkungan industri, mencakup penyajian data pemantauan sistem, digitalisasi alur kerja operasional logistik, dan penerapan alur kerja berbasis agen cerdas.
+
+\section{METODOLOGI PELAKSANAAN}
+
+% [PLACEHOLDER METODOLOGI PELAKSANAAN]
+% Bagian ini disiapkan sebagai struktur sementara untuk dibahas lebih lanjut.
+% Narasi dapat diisi atau dihapus sesuai kebutuhan setelah diskusi mendalam.
+\textit{[Bagian Metodologi Pelaksanaan ini sementara disediakan sebagai placeholder untuk pembahasan lebih lanjut.]}
 
 \section{SISTEMATIKA PENULISAN}
 

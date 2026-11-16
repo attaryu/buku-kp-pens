@@ -33,30 +33,48 @@ Struktur organisasi \NamaPerusahaan\ disusun berdasarkan fungsi pekerjaan agar s
   \caption{Divisi Kerja dan Tanggung Jawab di \NamaPerusahaan}
   \label{tab:divisi_perusahaan}
   \begin{tblr}{
-    colspec = {X[1.2] X[2.5]},
+    colspec = {X[1.2] X[2.8]},
     hlines,
     vlines,
   }
     Divisi & Tanggung Jawab \\
-    Manajemen proyek & Menyusun rencana kerja, mengatur prioritas kebutuhan, dan menjaga komunikasi dengan pihak klien. \\
-    Analisis dan perancangan & Menggali kebutuhan pengguna, menyusun alur proses, dan menyiapkan rancangan antarmuka. \\
-    Pengembangan \textit{web} & Mengerjakan aplikasi \textit{web} dan layanan \textit{backend} yang digunakan untuk pengelolaan data operasional. \\
-    Pengembangan \textit{mobile} & Mengerjakan aplikasi perangkat bergerak, termasuk integrasi dengan layanan \textit{backend} dan perangkat pendukung. \\
-    Infrastruktur dan operasional & Menyiapkan lingkungan \textit{server}, pengemasan layanan, serta pemantauan sistem yang telah berjalan. \\
+    Manajemen Proyek & Menyusun perencanaan kerja, alokasi sumber daya, manajemen risiko, serta koordinasi komunikasi dengan klien. \\
+    Desain UI/UX & Merancang arsitektur informasi, alur interaksi pengguna (\textit{user experience}), dan desain antarmuka visual sistem. \\
+    Pengembangan \textit{Frontend} & Membangun antarmuka berbasis \textit{web} yang responsif dan menghubungkannya dengan layanan data terpusat. \\
+    Pengembangan \textit{Backend} & Mengembangkan logika bisnis, perancangan basis data, integrasi API, serta orkestrasi pemrosesan data. \\
+    Pengembangan \textit{Mobile} & Mengembangkan aplikasi perangkat bergerak untuk mendukung aksesibilitas pengguna dan operasional lapangan. \\
+    Infrastruktur dan \textit{DevOps} & Mengelola penyediaan lingkungan peladen, otomatisasi \textit{pipeline} CI/CD, serta pemantauan keandalan sistem. \\
+    Perangkat Keras dan IoT & Merancang integrasi modul mikrokontroler, akuisisi data sensor, dan komunikasi perangkat keras lapangan. \\
   \end{tblr}
 \end{table}
 
+\subsection{Divisi Manajemen Proyek}
+
+Divisi Manajemen Proyek bertanggung jawab atas perencanaan, pengorganisasian, dan pengawasan siklus pelaksanaan proyek di \NamaPerusahaan. Peran divisi ini mencakup penetapan tenggat waktu, manajemen alokasi sumber daya tim, mitigasi risiko proyek, serta menjaga transparansi komunikasi dan keselarasan ekspektasi antara tim pengembang dengan pemangku kepentingan atau klien.
+
+\subsection{Divisi Desain UI/UX}
+
+Divisi Desain UI/UX bertanggung jawab atas penelitian kebutuhan pengguna, penyusunan arsitektur informasi, perancangan alur interaksi (\textit{user journey}), serta pembuatan purwarupa (\textit{prototype}) dan sistem desain visual. Divisi ini memastikan setiap sistem dan aplikasi yang dikembangkan memiliki kemudahan penggunaan (\textit{usability}) yang optimal dan konsistensi antarmuka yang selaras dengan identitas produk.
+
+\subsection{Divisi Pengembangan Frontend}
+
+Divisi Pengembangan \textit{Frontend} bertanggung jawab atas implementasi antarmuka pada aplikasi berbasis \textit{web}. Lingkup kerja divisi ini mencakup penerjemahan rancangan visual ke dalam komponen interaktif yang responsif, pengelolaan status pada sisi klien, serta integrasi dengan layanan data terpusat agar pengguna dapat mengoperasikan sistem dengan lancar dan intuitif.
+
+\subsection{Divisi Pengembangan Backend}
+
+Divisi Pengembangan \textit{Backend} bertanggung jawab atas perancangan arsitektur data, implementasi logika bisnis, dan penyediaan antarmuka pemrograman aplikasi (\textit{Application Programming Interface} atau API). Divisi ini memastikan keandalan pemrosesan transaksi, integritas data pada basis data, penanganan proses latar belakang secara asinkron, serta keamanan komunikasi data antar-layanan.
+
 \subsection{Divisi Pengembangan Mobile}
 
-Divisi ini menangani aplikasi berbasis Flutter yang digunakan pada perangkat Android dan iOS. Pekerjaan mencakup penyusunan antarmuka, pengelolaan \textit{state}, penghubungan dengan REST API, penyimpanan data lokal, serta integrasi perangkat keras seperti kamera dan \textit{printer} Bluetooth. Penulis ditempatkan pada divisi ini dengan pendampingan dari pengembang yang lebih berpengalaman.
+Divisi Pengembangan \textit{Mobile} bertanggung jawab atas pembangunan aplikasi pada perangkat bergerak. Lingkup kerja divisi ini mencakup optimalisasi performa antarmuka pada beragam perangkat, pengelolaan data lokal, penanganan interaksi sistem secara luring maupun daring, serta penyelarasan proses pencatatan data operasional lapangan dengan sistem terpusat.
 
-\subsection{Divisi Pengembangan Web dan Backend}
+\subsection{Divisi Infrastruktur dan DevOps}
 
-Divisi ini menangani aplikasi \textit{web} yang digunakan operator serta layanan \textit{backend} yang menyimpan data operasional. Pekerjaan mencakup pengelolaan basis data, penyusunan \textit{endpoint}, pengaturan hak akses, dan penyiapan pekerjaan latar belakang. Sebagian besar perubahan pada proyek PT Makassar Trans memerlukan koordinasi dengan divisi ini karena aplikasi \textit{mobile} menggunakan kontrak API yang sama.
+Divisi Infrastruktur dan \textit{DevOps} bertanggung jawab atas penyediaan lingkungan eksekusi aplikasi, konfigurasi otomatisasi integrasi dan penyebaran sistem (\textit{Continuous Integration / Continuous Deployment}), serta pengelolaan infrastruktur peladen. Selain itu, divisi ini bertugas memantau metrik kinerja, ketersediaan, dan keandalan sistem operasional secara berkala.
 
-\subsection{Divisi Infrastruktur dan Operasional}
+\subsection{Divisi Perangkat Keras dan IoT}
 
-Divisi ini menyiapkan lingkungan tempat aplikasi dijalankan, termasuk pengemasan aplikasi ke dalam \textit{container}, pengaturan \textit{pipeline} CI/CD, dan pemantauan layanan. Pada pekerjaan yang dibahas dalam laporan ini, divisi tersebut berperan pada penyediaan layanan OCR, layanan WhatsApp, dan penyimpanan objek MinIO.
+Divisi Perangkat Keras dan \textit{Internet of Things} (IoT) bertanggung jawab atas penelitian, perancangan, dan pengujian modul perangkat keras cerdas serta sensor telemetri. Divisi ini berfokus pada integrasi mikrokontroler, akuisisi sinyal dan pembacaan metrik dari peralatan fisik lapangan (seperti pada gardu dan kubikel kelistrikan), serta pengiriman data lapangan menuju peladen terpusat.
 
 \section{HAK DAN WEWENANG}
 

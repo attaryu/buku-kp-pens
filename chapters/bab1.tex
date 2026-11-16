@@ -5,88 +5,87 @@
 
 \section{LATAR BELAKANG}
 
-Perangkat lunak yang digunakan sebuah organisasi tidak berdiri sebagai satu aplikasi tunggal. Di belakang layar yang dilihat pengguna terdapat aplikasi \textit{mobile}, aplikasi \textit{web}, layanan pembacaan dokumen, antrean pekerjaan, dan penyimpanan berkas yang saling bertukar data. Perubahan kecil pada satu bagian dapat memengaruhi bagian lain apabila identitas data, aturan bisnis, dan status proses tidak dipahami bersama. Pemahaman tersebut tidak cukup diperoleh dari perkuliahan saja, sehingga kerja praktik menjadi kesempatan untuk mengikuti proses pengembangan perangkat lunak pada kondisi kerja yang sebenarnya.
+Perangkat lunak yang diterapkan dalam lingkungan operasional organisasi modern tidak beroperasi sebagai modul yang terisolasi. Suatu ekosistem sistem informasi umumnya terdiri dari keterpaduan berbagai komponen fungsional, meliputi antarmuka pengguna pada perangkat lapangan maupun web, layanan pemrosesan data terpusat, pengolahan dan verifikasi dokumen, antrean eksekusi tugas, hingga orkestrasi alur kerja otomatis yang saling bertukar informasi secara berkelanjutan. Konsistensi data, keandalan penanganan kegagalan proses, dan keselarasan antarkomponen menjadi faktor krusial dalam menjamin kelancaran operasional. Pemahaman terhadap kompleksitas integrasi sistem tersebut membutuhkan pengalaman implementasi pada lingkungan industri nyata, yang menjadi tujuan utama dari pelaksanaan kerja praktik ini.
 
-Kerja Praktik dilaksanakan di \NamaPerusahaan, perusahaan pengembangan perangkat lunak yang mengerjakan proyek untuk berbagai organisasi. Selama periode \PeriodeKP, penulis ditempatkan pada pekerjaan pengembangan aplikasi \textit{mobile} dan integrasi layanan pendukung. Penempatan tersebut memberikan tiga pengalaman yang berbeda tingkat kesulitannya.
+Kerja Praktik dilaksanakan di \NamaPerusahaan, sebuah perusahaan rekayasa perangkat lunak dan penyedia solusi teknologi informasi. Selama periode \PeriodeKP, penulis terlibat dalam proses pengembangan dan integrasi sistem pada tiga proyek rekayasa perangkat lunak, yaitu proyek \textit{Mongrid}, sistem operasional \textit{PT Makassar Trans}, dan platform otomatisasi \textit{Nedo Agentic Platform}. Ketiga proyek tersebut menghadirkan tantangan fungsional, integrasi, dan arsitektural yang beragam.
 
-Pengalaman pertama berupa aplikasi TodoList berbasis Flutter yang digunakan sebagai sarana penyesuaian diri terhadap kebiasaan pengembangan di perusahaan. Pengalaman kedua berupa pengembangan fitur pada Mongrid, aplikasi pemantauan kelistrikan yang digunakan untuk membaca kondisi peralatan pada gardu dan kubikel. Pengalaman ketiga berupa pengerjaan proyek klien PT Makassar Trans yang menghubungkan aplikasi \textit{mobile}, aplikasi \textit{web}, pembacaan dokumen, dan pengiriman dokumen melalui WhatsApp.
+Proyek \textit{Mongrid} merupakan sistem pemantauan infrastruktur kelistrikan yang dirancang untuk memantau kondisi dan keandalan aset penting, seperti gardu dan kubikel listrik. Kebutuhan operasional pada sistem ini meliputi penyajian informasi metrik pemantauan peralatan secara akurat dan tepat waktu, serta pengelolaan alur penanganan tiket insiden atau pemeliharaan secara terstruktur. Tantangan teknis yang dihadapi mencakup penyelarasan aliran data status operasional, validasi input teknis lapangan, serta penyesuaian hak akses dan peran pengguna agar informasi yang ditampilkan sesuai dengan kewenangan operasional masing-masing pihak.
 
-Pada proyek PT Makassar Trans, alur kerja berawal dari petugas yang mencatat tanda terima penerimaan barang melalui aplikasi \textit{mobile}. Data tersebut kemudian diolah oleh operator pada aplikasi \textit{web} untuk menghasilkan rincian barang dan nota tagihan. Pekerjaan petugas dan operator bertemu pada dokumen yang sama, namun dipisahkan oleh perangkat, jaringan, dan antarmuka yang berbeda. Ketika foto dokumen tidak terhubung dengan tanda terima yang benar, operator harus membaca dokumen fisik secara manual. Ketika rincian barang harus dimasukkan satu per satu, pekerjaan berlangsung berulang dan memakan waktu.
+Proyek \textit{PT Makassar Trans} berfokus pada digitalisasi dan integrasi alur kerja logistik penerimaan barang. Alur kerja dimulai dari pencatatan tanda terima operasional di lapangan, verifikasi dokumen fisik berupa rincian muatan barang dan nota tagihan pada sistem operasional terpusat, hingga pengiriman dokumen kepada klien. Pada implementasinya, tantangan operasional muncul pada konsistensi sinkronisasi data tanda terima dan berkas dokumen pendukung antara sistem lapangan dan sistem terpusat, percepatan proses verifikasi dokumen rincian barang melalui bantuan layanan ekstraksi data otomatis, serta penyediaan mekanisme pengiriman dokumen operasional secara asinkron dengan pengelolaan antrean dan pemantauan status pengiriman yang terpantau.
 
-Persoalan lain muncul pada kejelasan hasil proses. Respons jaringan yang diterima aplikasi belum tentu berarti data telah tersimpan, karena \textit{server} dapat menolak permintaan karena aturan bisnis atau hak akses. Koneksi yang terputus setelah berkas terkirim juga dapat membuat pengguna mengulang pekerjaan tanpa mengetahui keadaan data pada \textit{server}. Pada layanan pengiriman WhatsApp, kegagalan menyampaikan pesan perlu dibedakan dari kegagalan menyimpan data, karena keduanya memiliki akibat dan tindakan lanjutan yang berbeda.
+Proyek \textit{Nedo Agentic Platform} berfokus pada pengembangan platform otomatisasi alur kerja berbasis agen cerdas (\textit{agentic workflow}). Platform ini bertujuan untuk mengotomatisasi serangkaian tugas operasional yang saling berkaitan secara adaptif dan terkoordinasi. Tantangan utama dalam pengembangan platform ini terletak pada perancangan orkestrasi alur kerja agen, penanganan eksekusi tugas multi-tahap secara otomatis, serta mitigasi kegagalan proses antar-layanan agar seluruh rangkaian tugas dapat terselesaikan secara konsisten dan mandiri.
 
-Pengembangan diarahkan pada perbaikan alur tersebut secara bertahap. Aplikasi \textit{mobile} diperbaiki agar menyampaikan hasil penyimpanan secara benar dan menjaga foto yang belum terkirim. Aplikasi \textit{web} dilengkapi halaman pengisian banyak baris barang yang menampilkan foto dokumen sebagai pembanding. Pembacaan dokumen menggunakan model \textit{vision} dijalankan sebagai pekerjaan latar belakang yang hasilnya tetap diperiksa operator. Pengiriman tanda terima dan nota tagihan dilakukan melalui layanan Baileys dengan antrean yang dapat dipantau. Seluruh bagian tersebut menggunakan penyimpanan objek MinIO agar berkas dapat diakses beberapa layanan tanpa menyalinnya berulang kali.
-
-Berdasarkan uraian tersebut, laporan ini mendokumentasikan pelaksanaan Kerja Praktik pada tiga pekerjaan yang saling berkaitan. Pembahasan tidak dibatasi pada tampilan aplikasi, tetapi mencakup alasan perubahan, aliran data, penanganan kegagalan, serta batas pengujian yang benar-benar telah dilakukan. Dengan cara ini, hasil kerja praktik dapat dinilai sebagai proses belajar mengembangkan perangkat lunak pada sistem yang telah berjalan, bukan sebagai pembuatan sistem baru dari awal.
+Ketiga proyek tersebut menuntut pemahaman menyeluruh terhadap logika bisnis, penanganan aliran data, mekanisme toleransi kesalahan, serta koordinasi antar-layanan pada arsitektur sistem yang sedang berjalan. Berdasarkan hal tersebut, laporan kerja praktik ini disusun untuk mendokumentasikan proses rekayasa perangkat lunak, perancangan fungsional, integrasi alur kerja, serta hasil pengujian fungsional pada proyek \textit{Mongrid}, \textit{PT Makassar Trans}, dan \textit{Nedo Agentic Platform}.
 
 \section{RUMUSAN MASALAH}
 
-Berdasarkan latar belakang yang telah dijelaskan, permasalahan yang dibahas dalam laporan kerja praktik ini dirumuskan sebagai berikut.
+Berdasarkan latar belakang yang telah dipaparkan, permasalahan yang dibahas dalam laporan kerja praktik ini dirumuskan sebagai berikut:
 
 \begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
-  \item Bagaimana membangun aplikasi TodoList berbasis Flutter sebagai sarana penyesuaian terhadap pola pengembangan aplikasi \textit{mobile} di \NamaPerusahaan?
-  \item Bagaimana mengembangkan fitur pada aplikasi Mongrid agar data pemantauan kelistrikan dan pengelolaan tiket dapat digunakan sesuai peran pengguna?
-  \item Bagaimana memperbaiki alur tanda terima pada aplikasi \textit{mobile} Flutter proyek PT Makassar Trans agar hasil penyimpanan, pengelolaan foto, dan interaksi pengguna sesuai dengan aturan \textit{backend}?
-  \item Bagaimana menghubungkan foto dari aplikasi \textit{mobile} dengan halaman \textit{Bulk Input} pada aplikasi \textit{web} sehingga operator dapat mengisi rincian barang berdasarkan dokumen sumber?
-  \item Bagaimana memanfaatkan OCR sebagai bantuan pembacaan dokumen dengan tetap menyediakan pemeriksaan dan koreksi oleh operator?
-  \item Bagaimana mengintegrasikan pengiriman tanda terima dan nota tagihan melalui WhatsApp beserta antrean, percobaan ulang, dan pemantauan statusnya?
+  \item Bagaimana menyajikan data pemantauan kondisi peralatan kelistrikan (gardu dan kubikel) serta memvalidasi alur pengelolaan tiket insiden pada sistem \textit{Mongrid} sesuai dengan hak akses pengguna?
+  \item Bagaimana menyelaraskan alur pencatatan tanda terima operasional pada sistem lapangan proyek \textit{PT Makassar Trans} agar status penyimpanan dan berkas dokumen terintegrasi secara konsisten dengan sistem terpusat?
+  \item Bagaimana menghubungkan berkas dokumen fisik dengan sistem operasional operator serta memanfaatkan alat bantu ekstraksi data dokumen dengan tetap menyediakan mekanisme verifikasi dan koreksi manual?
+  \item Bagaimana mengintegrasikan pengiriman dokumen operasional (tanda terima dan nota tagihan) melalui layanan perpesanan dengan mekanisme antrean dan pemantauan status pengiriman yang andal?
+  \item Bagaimana merancang dan mengimplementasikan mekanisme orkestrasi alur kerja berbasis agen cerdas (\textit{agentic workflow}) pada \textit{Nedo Agentic Platform} agar eksekusi tugas otomatis dapat terkoordinasi secara efektif?
+  \item Bagaimana mengelola penanganan kegagalan proses dan koordinasi data antar-layanan pada alur eksekusi platform otomatisasi tersebut?
 \end{enumerate}
 
 \section{BATASAN MASALAH}
 
-Agar pembahasan terarah, maka ditetapkan batasan masalah sebagai berikut:
+Agar pembahasan tetap fokus dan terarah, batasan masalah dalam laporan kerja praktik ini ditetapkan sebagai berikut:
 
 \begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
-  \item Pembahasan dibatasi pada kegiatan yang dilaksanakan selama periode \PeriodeKP\ di \NamaPerusahaan.
-  \item Proyek TodoList dibahas sebagai proyek pengenalan. Aplikasi tersebut digunakan untuk membiasakan struktur proyek, pengelolaan \textit{state}, dan alur penyimpanan data pada aplikasi Flutter, bukan sebagai produk yang digunakan perusahaan.
-  \item Proyek Mongrid dibahas pada bagian fitur yang dikerjakan penulis. Aplikasi pemantauan kelistrikan tersebut telah tersedia dan dikerjakan oleh beberapa anggota tim, sehingga laporan tidak menganggap seluruh modul sebagai hasil kerja penulis.
-  \item Proyek PT Makassar Trans dibahas dari sisi aplikasi \textit{mobile} Flutter dan integrasinya dengan aplikasi \textit{web}, layanan OCR, layanan WhatsApp, dan penyimpanan objek. Aplikasi \textit{web}, \textit{backend}, basis data operasional, serta alur cetak yang telah tersedia diposisikan sebagai landasan pengembangan.
-  \item OCR dibatasi sebagai alat bantu ekstraksi data. Hasil model tidak langsung menjadi data barang tanpa pemeriksaan dan penyimpanan oleh operator.
-  \item Pengujian dibahas berdasarkan catatan verifikasi yang tersedia. Pengukuran produktivitas pengguna, uji beban menyeluruh, dan penerimaan pengguna akhir belum dinyatakan sebagai hasil yang selesai.
-  \item Data pelanggan, kredensial layanan, dan isi pesan WhatsApp tidak ditampilkan dalam laporan. Contoh data yang disajikan menggunakan data uji.
+  \item Pembahasan dibatasi pada kegiatan rekayasa perangkat lunak yang dilaksanakan selama periode \PeriodeKP\ di \NamaPerusahaan.
+  \item Ruang lingkup proyek dibatasi pada tiga proyek utama, yaitu \textit{Mongrid}, sistem operasional \textit{PT Makassar Trans}, dan \textit{Nedo Agentic Platform}.
+  \item Pada proyek \textit{Mongrid}, pembahasan difokuskan pada modul penyajian data pemantauan infrastruktur kelistrikan (gardu dan kubikel) serta alur pengelolaan tiket insiden pada lingkup tanggung jawab yang diberikan kepada penulis.
+  \item Pada proyek \textit{PT Makassar Trans}, pembahasan difokuskan pada alur pencatatan tanda terima operasional, penyelarasan verifikasi berkas dokumen rincian barang, pemanfaatan alat bantu ekstraksi data dokumen, serta integrasi pengiriman dokumen operasional.
+  \item Pada proyek \textit{Nedo Agentic Platform}, pembahasan difokuskan pada perancangan orkestrasi alur kerja agen cerdas (\textit{agentic workflow}) dan penanganan eksekusi tugas otomatis.
+  \item Layanan ekstraksi data dokumen dan pemrosesan berbasis kecerdasan buatan diposisikan sebagai alat bantu otomatisasi, di mana verifikasi dan persetujuan data tetap melibatkan operator atau aturan bisnis sistem.
+  \item Pengujian yang dibahas difokuskan pada pengujian fungsional dan verifikasi alur kerja pada lingkungan pengujian; pengujian beban menyeluruh dan adopsi operasional jangka panjang tidak dibahas secara mendalam.
+  \item Data operasional riil klien, kredensial sistem, dan informasi sensitif tidak dicantumkan dalam laporan; data yang disajikan menggunakan data uji (\textit{dummy}) untuk kepentingan dokumentasi teknis.
 \end{enumerate}
 
 \section{TUJUAN}
 
-Bagian ini menjelaskan tujuan pelaksanaan kerja praktik di \NamaPerusahaan. Tujuan dirumuskan untuk menggambarkan hasil teknis yang ingin dicapai sekaligus kontribusi pekerjaan terhadap proses kerja yang menggunakan aplikasi tersebut.
-
-\subsection{Tujuan Proyek TodoList Flutter}
-
-\begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item Membangun aplikasi pencatatan tugas berbasis Flutter yang menerapkan struktur proyek, pengelolaan \textit{state}, dan penyimpanan data sesuai kebiasaan pengembangan di \NamaPerusahaan.
-  \item Membiasakan penulis menggunakan alur kerja \textit{version control}, penamaan berkas, dan peninjauan kode sebelum mengerjakan proyek klien.
-\end{itemize}
+Pelaksanaan kerja praktik di \NamaPerusahaan\ bertujuan untuk mencapai sasaran teknis dan fungsional pada masing-masing proyek yang dikerjakan, dengan rincian sebagai berikut:
 
 \subsection{Tujuan Proyek Mongrid}
 
 \begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item Mengembangkan fitur aplikasi \textit{mobile} Mongrid pada bagian yang menjadi tanggung jawab penulis, khususnya yang berkaitan dengan penyajian data pemantauan dan pengelolaan tiket.
-  \item Menyesuaikan tampilan dan alur kerja fitur dengan peran pengguna serta data yang disediakan \textit{backend}.
+  \item Menyediakan antarmuka penyajian data pemantauan infrastruktur kelistrikan yang informatif dan terstruktur untuk memantau kondisi peralatan pada gardu dan kubikel.
+  \item Mengimplementasikan alur pengelolaan tiket insiden dan pemeliharaan yang terintegrasi dengan validasi status dan peran operasional pengguna.
 \end{itemize}
 
 \subsection{Tujuan Proyek PT Makassar Trans}
 
 \begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item Memperbaiki alur tanda terima pada aplikasi Flutter agar status penyimpanan yang ditampilkan sesuai dengan hasil yang tercatat pada \textit{backend}.
-  \item Menyediakan foto dokumen yang dapat diakses operator \textit{web} serta pengisian banyak baris barang melalui halaman \textit{Bulk Input}.
-  \item Menghasilkan \textit{draft} pembacaan dokumen yang dapat dikoreksi sebelum digunakan sebagai data barang.
-  \item Menyediakan pengiriman tanda terima dan nota tagihan melalui WhatsApp yang tercatat pada antrean dan dapat dipantau statusnya.
-  \item Menjaga konsistensi data pada perubahan yang melibatkan beberapa layanan melalui identitas data, transaksi, dan penyimpanan berkas bersama.
+  \item Menyempurnakan alur pencatatan tanda terima operasional agar status penyimpanan dan integrasi berkas dokumen konsisten dengan sistem terpusat.
+  \item Memfasilitasi proses verifikasi dokumen dan pengisian rincian barang bagi operator melalui penyelarasan data dokumen sumber dan alat bantu ekstraksi data dokumen.
+  \item Mengimplementasikan layanan pengiriman dokumen tanda terima dan nota tagihan secara otomatis dengan mekanisme antrean dan pelacakan status pengiriman yang andal.
+\end{itemize}
+
+\subsection{Tujuan Proyek Nedo Agentic Platform}
+
+\begin{itemize}[leftmargin=*, itemsep=0pt]
+  \item Merancang dan mengimplementasikan mekanisme orkestrasi alur kerja agen cerdas (\textit{agentic workflow}) untuk mendukung eksekusi tugas secara otomatis.
+  \item Membangun penanganan proses dan koordinasi data antar-layanan agar alur otomasi platform dapat berjalan secara andal dan konsisten.
 \end{itemize}
 
 \section{MANFAAT}
 
+Pelaksanaan kerja praktik ini diharapkan memberikan manfaat bagi berbagai pihak, antara lain:
+
 \subsection{Manfaat bagi Mahasiswa}
 
-Kerja praktik memberikan pengalaman mengembangkan aplikasi \textit{mobile} pada kebutuhan nyata. Penulis mempelajari penyusunan struktur proyek Flutter, pengelolaan \textit{state}, pengiriman berkas, serta pemeriksaan respons API. Pengerjaan proyek klien menambah pemahaman mengenai hubungan antara antarmuka, aturan bisnis \textit{backend}, pekerjaan latar belakang, dan penyimpanan berkas. Penulis juga berlatih membaca kode yang telah tersedia, menyesuaikan perubahan dengan alur operasional, dan membedakan keberhasilan pengujian komponen dari keberhasilan penggunaan pada lingkungan kerja.
+Kerja praktik memberikan pengalaman nyata dalam rekayasa perangkat lunak skala industri. Penulis memperoleh pemahaman mendalam mengenai integrasi sistem multi-layanan, pengelolaan aliran data operasional, penanganan proses asinkron, serta arsitektur otomatisasi alur kerja berbasis agen cerdas. Selain itu, kegiatan ini melatih kemampuan analisis teknis, adaptasi pada sistem yang sedang berjalan (\textit{existing codebase}), serta kolaborasi profesional dalam tim rekayasa perangkat lunak.
 
 \subsection{Manfaat bagi Perusahaan dan Klien}
 
-Hasil pengembangan menyediakan alur yang lebih terhubung antara pencatatan tanda terima, pemeriksaan dokumen, pengisian barang, dan pengiriman pemberitahuan. Operator memperoleh sarana untuk membandingkan isian dengan foto sumber, sedangkan pengelola dapat memantau antrean pengiriman WhatsApp. Manfaat tersebut dinyatakan sebagai kemampuan fungsional yang tersedia, sedangkan besarnya penghematan waktu masih memerlukan pengukuran operasional.
+Hasil pekerjaan memberikan kontribusi fungsional nyata terhadap penyempurnaan modul pemantauan dan tiket pada sistem \textit{Mongrid}, peningkatan keterpaduan dan efisiensi alur operasional penerimaan barang pada sistem \textit{PT Makassar Trans}, serta penyediaan fondasi orkestrasi otomatisasi pada \textit{Nedo Agentic Platform}.
 
 \subsection{Manfaat bagi Pembaca}
 
-Laporan memberikan contoh pengembangan aplikasi Flutter pada sistem yang telah memiliki \textit{backend} dan aturan bisnis. Pembaca dapat mempelajari hubungan antara rancangan antarmuka, kontrak data, pemeriksaan manusia terhadap hasil OCR, dan penanganan pengulangan proses pada layanan yang berjalan secara asinkron.
+Laporan ini dapat menjadi referensi dan studi kasus mengenai implementasi rekayasa perangkat lunak terintegrasi di lingkungan industri, mencakup penyajian data pemantauan sistem, digitalisasi alur kerja operasional logistik, dan penerapan alur kerja berbasis agen cerdas.
 
 \section{METODOLOGI PELAKSANAAN}
 

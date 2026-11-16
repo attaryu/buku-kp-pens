@@ -20,7 +20,7 @@ sesuai pedoman **BIMA.PENS.KP Rev.02** Pasal 4.2.2.
 | Penomoran halaman awal | Romawi kecil (i, ii, ...), posisi bawah-tengah | ✅ |
 | Penomoran halaman isi | Arab (1, 2, ...), posisi bawah-tengah | ✅ |
 
-### Margin (Mirror — sesuai spec jilid)
+### Margin (Mirror, sesuai spec jilid)
 
 | Sisi | Jarak |
 |---|---|
@@ -31,12 +31,13 @@ sesuai pedoman **BIMA.PENS.KP Rev.02** Pasal 4.2.2.
 
 ### Catatan Belum Otomatis (Perlu Diisi Manual)
 
-> Spec pedoman yang tidak bisa diotomasi oleh template — perlu diperhatikan saat menulis konten:
+> Spec pedoman yang tidak bisa diotomasi oleh template; perlu diperhatikan saat menulis konten:
 
 - **Font caption tabel**: judul tabel 10pt normal, isi tabel minimal 6pt normal, sumber di bawah 8pt → atur di tiap `\caption{}` secara manual
 - **Font caption gambar**: judul gambar 10pt bold, sumber 8pt → atur di tiap `\caption{}` secara manual
 - **Sumber tabel/gambar**: format `Sumber: NamaPengarang, Judul Buku, TahunTerbit, Hal.` ditulis manual di bawah `\caption{}`
-- **Jarak 2 spasi (24pt) antara judul BAB dan teks/subbab pertama**: saat ini diset 12pt di `config/formatting.tex` (baris `\titlespacing`) — ubah ke `24pt` jika ingin mengikuti pedoman secara ketat
+- **Jarak 2 spasi (24pt) antara judul BAB dan teks/subbab pertama**: saat ini diset 12pt di `config/formatting.tex` (baris `\titlespacing`). Ubah ke `24pt` jika ingin mengikuti pedoman secara ketat
+- **Tabel Tabularray**: Pengaturan `rowhead = 1` sudah diset secara global di `config/formatting.tex`. Hindari menambahkan `rowhead = 1` lagi pada deklarasi tabel lokal di bab untuk mencegah duplikasi angka '1' di atas tabel.
 
 ## Struktur Project
 

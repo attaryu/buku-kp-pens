@@ -1,96 +1,99 @@
 %============================================================
 % BAB 1: PENDAHULUAN
-%   1.1 Latar Belakang
-%   1.2 Rumusan Masalah
-%   1.3 Batasan Masalah
-%   1.4 Tujuan
-%       1.4.1 Tujuan Proyek [Nama Proyek 1]
-%       1.4.2 Tujuan Proyek [Nama Proyek 2] (hapus jika hanya 1 proyek)
-%   1.5 Manfaat
-%       1.5.1 Manfaat Proyek [Nama Proyek 1]
-%       1.5.2 Manfaat Proyek [Nama Proyek 2] (hapus jika hanya 1 proyek)
-%   1.6 Sistematika Penulisan
 %============================================================
 \chapter{PENDAHULUAN}
 
 \section{LATAR BELAKANG}
 
-Deskripsikan latar belakang pemilihan tempat dan topik kerja praktik. Jelaskan
-konteks industri atau institusi tempat KP dilaksanakan, permasalahan yang ada,
-relevansi dengan program studi, serta gambaran umum proyek yang dikerjakan.
-Latar belakang yang baik mampu menjelaskan urgensi dan motivasi pelaksanaan
-kerja praktik ini.
+Perangkat lunak yang digunakan sebuah organisasi tidak berdiri sebagai satu aplikasi tunggal. Di belakang layar yang dilihat pengguna terdapat aplikasi \textit{mobile}, aplikasi \textit{web}, layanan pembacaan dokumen, antrean pekerjaan, dan penyimpanan berkas yang saling bertukar data. Perubahan kecil pada satu bagian dapat memengaruhi bagian lain apabila identitas data, aturan bisnis, dan status proses tidak dipahami bersama. Pemahaman tersebut tidak cukup diperoleh dari perkuliahan saja, sehingga kerja praktik menjadi kesempatan untuk mengikuti proses pengembangan perangkat lunak pada kondisi kerja yang sebenarnya.
+
+Kerja Praktik dilaksanakan di \NamaPerusahaan, perusahaan pengembangan perangkat lunak yang mengerjakan proyek untuk berbagai organisasi. Selama periode \PeriodeKP, penulis ditempatkan pada pekerjaan pengembangan aplikasi \textit{mobile} dan integrasi layanan pendukung. Penempatan tersebut memberikan tiga pengalaman yang berbeda tingkat kesulitannya.
+
+Pengalaman pertama berupa aplikasi TodoList berbasis Flutter yang digunakan sebagai sarana penyesuaian diri terhadap kebiasaan pengembangan di perusahaan. Pengalaman kedua berupa pengembangan fitur pada Mongrid, aplikasi pemantauan kelistrikan yang digunakan untuk membaca kondisi peralatan pada gardu dan kubikel. Pengalaman ketiga berupa pengerjaan proyek klien PT Makassar Trans yang menghubungkan aplikasi \textit{mobile}, aplikasi \textit{web}, pembacaan dokumen, dan pengiriman dokumen melalui WhatsApp.
+
+Pada proyek PT Makassar Trans, alur kerja berawal dari petugas yang mencatat tanda terima penerimaan barang melalui aplikasi \textit{mobile}. Data tersebut kemudian diolah oleh operator pada aplikasi \textit{web} untuk menghasilkan rincian barang dan nota tagihan. Pekerjaan petugas dan operator bertemu pada dokumen yang sama, namun dipisahkan oleh perangkat, jaringan, dan antarmuka yang berbeda. Ketika foto dokumen tidak terhubung dengan tanda terima yang benar, operator harus membaca dokumen fisik secara manual. Ketika rincian barang harus dimasukkan satu per satu, pekerjaan berlangsung berulang dan memakan waktu.
+
+Persoalan lain muncul pada kejelasan hasil proses. Respons jaringan yang diterima aplikasi belum tentu berarti data telah tersimpan, karena \textit{server} dapat menolak permintaan karena aturan bisnis atau hak akses. Koneksi yang terputus setelah berkas terkirim juga dapat membuat pengguna mengulang pekerjaan tanpa mengetahui keadaan data pada \textit{server}. Pada layanan pengiriman WhatsApp, kegagalan menyampaikan pesan perlu dibedakan dari kegagalan menyimpan data, karena keduanya memiliki akibat dan tindakan lanjutan yang berbeda.
+
+Pengembangan diarahkan pada perbaikan alur tersebut secara bertahap. Aplikasi \textit{mobile} diperbaiki agar menyampaikan hasil penyimpanan secara benar dan menjaga foto yang belum terkirim. Aplikasi \textit{web} dilengkapi halaman pengisian banyak baris barang yang menampilkan foto dokumen sebagai pembanding. Pembacaan dokumen menggunakan model \textit{vision} dijalankan sebagai pekerjaan latar belakang yang hasilnya tetap diperiksa operator. Pengiriman tanda terima dan nota tagihan dilakukan melalui layanan Baileys dengan antrean yang dapat dipantau. Seluruh bagian tersebut menggunakan penyimpanan objek MinIO agar berkas dapat diakses beberapa layanan tanpa menyalinnya berulang kali.
+
+Berdasarkan uraian tersebut, laporan ini mendokumentasikan pelaksanaan Kerja Praktik pada tiga pekerjaan yang saling berkaitan. Pembahasan tidak dibatasi pada tampilan aplikasi, tetapi mencakup alasan perubahan, aliran data, penanganan kegagalan, serta batas pengujian yang benar-benar telah dilakukan. Dengan cara ini, hasil kerja praktik dapat dinilai sebagai proses belajar mengembangkan perangkat lunak pada sistem yang telah berjalan, bukan sebagai pembuatan sistem baru dari awal.
 
 \section{RUMUSAN MASALAH}
 
-Berdasarkan latar belakang yang telah dijelaskan, maka permasalahan yang akan
-dibahas dalam laporan kerja praktik ini dapat dirumuskan sebagai berikut.
+Berdasarkan latar belakang yang telah dijelaskan, permasalahan yang dibahas dalam laporan kerja praktik ini dirumuskan sebagai berikut.
 
 \begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
-  \item Rumusan masalah pertama.
-  \item Rumusan masalah kedua.
-  \item Rumusan masalah ketiga.
+  \item Bagaimana membangun aplikasi TodoList berbasis Flutter sebagai sarana penyesuaian terhadap pola pengembangan aplikasi \textit{mobile} di \NamaPerusahaan?
+  \item Bagaimana mengembangkan fitur pada aplikasi Mongrid agar data pemantauan kelistrikan dan pengelolaan tiket dapat digunakan sesuai peran pengguna?
+  \item Bagaimana memperbaiki alur tanda terima pada aplikasi \textit{mobile} Flutter proyek PT Makassar Trans agar hasil penyimpanan, pengelolaan foto, dan interaksi pengguna sesuai dengan aturan \textit{backend}?
+  \item Bagaimana menghubungkan foto dari aplikasi \textit{mobile} dengan halaman \textit{Bulk Input} pada aplikasi \textit{web} sehingga operator dapat mengisi rincian barang berdasarkan dokumen sumber?
+  \item Bagaimana memanfaatkan OCR sebagai bantuan pembacaan dokumen dengan tetap menyediakan pemeriksaan dan koreksi oleh operator?
+  \item Bagaimana mengintegrasikan pengiriman tanda terima dan nota tagihan melalui WhatsApp beserta antrean, percobaan ulang, dan pemantauan statusnya?
 \end{enumerate}
 
 \section{BATASAN MASALAH}
 
-Untuk memfokuskan pembahasan pada laporan kerja praktik ini, maka ditetapkan
-batasan masalah sebagai berikut:
+Agar pembahasan terarah, maka ditetapkan batasan masalah sebagai berikut:
 
 \begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
-  \item Pembahasan difokuskan pada kegiatan yang dilakukan selama periode
-        \PeriodeKP\ di \NamaPerusahaan.
-  \item Batasan teknis kedua (misalnya: hanya mencakup sisi frontend/backend).
-  \item Batasan ketiga (aspek yang tidak dibahas dalam laporan ini).
-  \item Periode pengamatan dan keterlibatan dalam proyek dibatasi selama masa
-        kerja praktik.
+  \item Pembahasan dibatasi pada kegiatan yang dilaksanakan selama periode \PeriodeKP\ di \NamaPerusahaan.
+  \item Proyek TodoList dibahas sebagai proyek pengenalan. Aplikasi tersebut digunakan untuk membiasakan struktur proyek, pengelolaan \textit{state}, dan alur penyimpanan data pada aplikasi Flutter, bukan sebagai produk yang digunakan perusahaan.
+  \item Proyek Mongrid dibahas pada bagian fitur yang dikerjakan penulis. Aplikasi pemantauan kelistrikan tersebut telah tersedia dan dikerjakan oleh beberapa anggota tim, sehingga laporan tidak menganggap seluruh modul sebagai hasil kerja penulis.
+  \item Proyek PT Makassar Trans dibahas dari sisi aplikasi \textit{mobile} Flutter dan integrasinya dengan aplikasi \textit{web}, layanan OCR, layanan WhatsApp, dan penyimpanan objek. Aplikasi \textit{web}, \textit{backend}, basis data operasional, serta alur cetak yang telah tersedia diposisikan sebagai landasan pengembangan.
+  \item OCR dibatasi sebagai alat bantu ekstraksi data. Hasil model tidak langsung menjadi data barang tanpa pemeriksaan dan penyimpanan oleh operator.
+  \item Pengujian dibahas berdasarkan catatan verifikasi yang tersedia. Pengukuran produktivitas pengguna, uji beban menyeluruh, dan penerimaan pengguna akhir belum dinyatakan sebagai hasil yang selesai.
+  \item Data pelanggan, kredensial layanan, dan isi pesan WhatsApp tidak ditampilkan dalam laporan. Contoh data yang disajikan menggunakan data uji.
 \end{enumerate}
 
 \section{TUJUAN}
 
-Bagian ini menjelaskan tujuan dari pelaksanaan proyek kerja praktik yang
-dilakukan di \NamaPerusahaan. Tujuan yang dirumuskan tidak hanya menggambarkan
-hasil yang ingin dicapai dari sisi teknis, tetapi juga mencerminkan kontribusi
-sistem terhadap efisiensi kerja dan nilai praktis dalam dunia industri.
+Bagian ini menjelaskan tujuan pelaksanaan kerja praktik di \NamaPerusahaan. Tujuan dirumuskan untuk menggambarkan hasil teknis yang ingin dicapai sekaligus kontribusi pekerjaan terhadap proses kerja yang menggunakan aplikasi tersebut.
 
-% Jika hanya satu proyek, hapus sub-section 1.4.2 dan ubah 1.4.1 jadi narasi langsung.
-\subsection{Tujuan Proyek [Nama Proyek 1]}
+\subsection{Tujuan Proyek TodoList Flutter}
 
 \begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item Tujuan pertama proyek.
-  \item Tujuan kedua proyek.
-  \item Tujuan ketiga proyek.
+  \item Membangun aplikasi pencatatan tugas berbasis Flutter yang menerapkan struktur proyek, pengelolaan \textit{state}, dan penyimpanan data sesuai kebiasaan pengembangan di \NamaPerusahaan.
+  \item Membiasakan penulis menggunakan alur kerja \textit{version control}, penamaan berkas, dan peninjauan kode sebelum mengerjakan proyek klien.
 \end{itemize}
 
-\subsection{Tujuan Proyek [Nama Proyek 2]}
+\subsection{Tujuan Proyek Mongrid}
 
 \begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item Tujuan pertama proyek kedua.
-  \item Tujuan kedua proyek kedua.
+  \item Mengembangkan fitur aplikasi \textit{mobile} Mongrid pada bagian yang menjadi tanggung jawab penulis, khususnya yang berkaitan dengan penyajian data pemantauan dan pengelolaan tiket.
+  \item Menyesuaikan tampilan dan alur kerja fitur dengan peran pengguna serta data yang disediakan \textit{backend}.
+\end{itemize}
+
+\subsection{Tujuan Proyek PT Makassar Trans}
+
+\begin{itemize}[leftmargin=*, itemsep=0pt]
+  \item Memperbaiki alur tanda terima pada aplikasi Flutter agar status penyimpanan yang ditampilkan sesuai dengan hasil yang tercatat pada \textit{backend}.
+  \item Menyediakan foto dokumen yang dapat diakses operator \textit{web} serta pengisian banyak baris barang melalui halaman \textit{Bulk Input}.
+  \item Menghasilkan \textit{draft} pembacaan dokumen yang dapat dikoreksi sebelum digunakan sebagai data barang.
+  \item Menyediakan pengiriman tanda terima dan nota tagihan melalui WhatsApp yang tercatat pada antrean dan dapat dipantau statusnya.
+  \item Menjaga konsistensi data pada perubahan yang melibatkan beberapa layanan melalui identitas data, transaksi, dan penyimpanan berkas bersama.
 \end{itemize}
 
 \section{MANFAAT}
 
-Pelaksanaan kerja praktik di \NamaPerusahaan\ tidak hanya bertujuan untuk
-memenuhi kewajiban akademik, tetapi juga memberikan manfaat nyata baik dari
-sisi teknis, operasional, maupun strategis. Berikut adalah manfaat utama dari
-masing-masing proyek:
+\subsection{Manfaat bagi Mahasiswa}
 
-% Jika hanya satu proyek, hapus sub-section 1.5.2 dan ubah 1.5.1 jadi narasi langsung.
-\subsection{Manfaat Proyek [Nama Proyek 1]}
+Kerja praktik memberikan pengalaman mengembangkan aplikasi \textit{mobile} pada kebutuhan nyata. Penulis mempelajari penyusunan struktur proyek Flutter, pengelolaan \textit{state}, pengiriman berkas, serta pemeriksaan respons API. Pengerjaan proyek klien menambah pemahaman mengenai hubungan antara antarmuka, aturan bisnis \textit{backend}, pekerjaan latar belakang, dan penyimpanan berkas. Penulis juga berlatih membaca kode yang telah tersedia, menyesuaikan perubahan dengan alur operasional, dan membedakan keberhasilan pengujian komponen dari keberhasilan penggunaan pada lingkungan kerja.
 
-\begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item \textbf{Manfaat Pertama.} Deskripsi manfaat pertama.
-  \item \textbf{Manfaat Kedua.} Deskripsi manfaat kedua.
-  \item \textbf{Manfaat Ketiga.} Deskripsi manfaat ketiga.
-\end{itemize}
+\subsection{Manfaat bagi Perusahaan dan Klien}
 
-\subsection{Manfaat Proyek [Nama Proyek 2]}
+Hasil pengembangan menyediakan alur yang lebih terhubung antara pencatatan tanda terima, pemeriksaan dokumen, pengisian barang, dan pengiriman pemberitahuan. Operator memperoleh sarana untuk membandingkan isian dengan foto sumber, sedangkan pengelola dapat memantau antrean pengiriman WhatsApp. Manfaat tersebut dinyatakan sebagai kemampuan fungsional yang tersedia, sedangkan besarnya penghematan waktu masih memerlukan pengukuran operasional.
 
-\begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item \textbf{Manfaat Pertama.} Deskripsi manfaat pertama proyek kedua.
-  \item \textbf{Manfaat Kedua.} Deskripsi manfaat kedua proyek kedua.
-\end{itemize}
+\subsection{Manfaat bagi Pembaca}
+
+Laporan memberikan contoh pengembangan aplikasi Flutter pada sistem yang telah memiliki \textit{backend} dan aturan bisnis. Pembaca dapat mempelajari hubungan antara rancangan antarmuka, kontrak data, pemeriksaan manusia terhadap hasil OCR, dan penanganan pengulangan proses pada layanan yang berjalan secara asinkron.
+
+\section{METODOLOGI PELAKSANAAN}
+
+% [PLACEHOLDER METODOLOGI PELAKSANAAN]
+% Bagian ini disiapkan sebagai struktur sementara untuk dibahas lebih lanjut.
+% Narasi dapat diisi atau dihapus sesuai kebutuhan setelah diskusi mendalam.
+\textit{[Bagian Metodologi Pelaksanaan ini sementara disediakan sebagai placeholder untuk pembahasan lebih lanjut.]}
 
 \section{SISTEMATIKA PENULISAN}
 

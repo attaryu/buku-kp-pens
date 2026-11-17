@@ -78,14 +78,88 @@ Proyek MonGrid adalah platform pemantauan dan analisis kondisi teknis jaringan d
 
 \subsection{Gambaran Umum dan Kebutuhan Sistem}
 
-Pada sistem konvensional, pemeriksaan kondisi peralatan gardu listrik sering kali bergantung pada inspeksi fisik manual secara berkala atau respons darurat ketika telah terjadi pemadaman listrik akibat kerusakan peralatan. Ketiadaan data operasional langsung (\textit{real-time}) menghambat deteksi dini terhadap fenomena degradasi aset, seperti ketidakseimbangan beban antarfasa, arus netral yang berlebihan, lonjakan temperatur belitan trafo, atau penurunan kualitas daya.
+Pada sistem konvensional, pemeriksaan kondisi peralatan gardu listrik sering kali bergantung pada inspeksi fisik manual secara berkala atau respons darurat ketika telah terjadi pemadaman listrik akibat kerusakan peralatan. Ketiadaan data operasional langsung (\textit{real-time}) menghambat deteksi dini terhadap fenomena degradasi aset, seperti ketidakseimbangan beban antarfasa, arus netral yang berlebihan, lonjakan temperatur busbar panel dan belitan trafo, atau penurunan kualitas daya.
 
-MonGrid hadir untuk menjembatani kesenjangan tersebut melalui digitalisasi menyeluruh. Sistem ini mengumpulkan telemetri berkecepatan tinggi dari ribuan titik sensor lapangan, melakukan normalisasi dan kalkulasi nilai rekayasa turunan secara otomatis, mendeteksi anomali ambang batas alarm dalam hitungan detik, serta menyajikan dasbor pemantauan multi-skala yang interaktif bagi operator dan manajer operasional.
+Dalam perancangan arsitektur data MonGrid, sistem menetapkan \textbf{Panel Listrik} (\textit{Panel}, seperti Panel Hubung Bagi Tegangan Rendah -- PHBTR dan \textit{Sub-Distribution Panel} -- SDP) sebagai titik akuisisi telemetri primer (\textit{primary telemetry acquisition point}). Keputusan rekayasa ini dilandasi oleh realitas teknis instalasi kelistrikan di mana instrumen meter digital (\textit{Power Meter}), sensor arus Rogowski, dan unit terminal jarak jauh (\textit{Remote Terminal Unit} -- RTU) secara fisik dipasang langsung pada kompartemen panel (sisi \textit{incoming} pemutus tenaga ACB/MCCB, busbar utama, serta penyulang/feeder distribusi). Entitas Transformator Daya (\textit{Transformer/Trafo}) tetap dimodelkan dalam skema sistem sebagai aset fisik (mencakup data kapasitas nominal kVA, rasio transformasi tegangan primer/sekunder, dan spesifikasi belitan), namun pembacaan telemetri kelistrikan dinamis diserap secara inheren melalui meter panel \textit{incoming} yang terhubung langsung ke trafo tersebut.
+
+Struktur topologi jaringan kelistrikan dalam MonGrid diorganisasikan ke dalam model pohon (\textit{tree topology}) multi-cabang yang memisahkan simpul fasilitas struktural dengan simpul peralatan fisik:
+\begin{itemize}[leftmargin=*, itemsep=0pt]
+  \item Simpul tertinggi adalah \textbf{Kawasan (\textit{Area})}, yang menaungi simpul-simpul fasilitas pada tingkat di bawahnya.
+  \item Pada tingkat fasilitas, terdapat dua cabang yang berkedudukan sejajar di bawah Kawasan, yaitu \textbf{Gardu Distribusi (\textit{Substation})} dan \textbf{Gedung (\textit{Building})}.
+  \item Cabang \textbf{Gardu (\textit{Substation})} langsung menaungi simpul daun peralatan (\textit{leaf devices}), yaitu \textbf{Panel Listrik} (seperti PHBTR) dan unit \textbf{Transformator} gardu secara mandiri.
+  \item Cabang \textbf{Gedung (\textit{Building})} memiliki struktur berjenjang yang menaungi \textbf{Lantai (\textit{Floor})}. Selanjutnya, setiap lantai menaungi simpul daun peralatan berupa \textbf{Panel Listrik} (seperti SDP lantai) serta unit \textbf{Transformator} (apabila gedung dilengkapi trafo lokal pada lantai teknis).
+  \item \textbf{Panel Listrik} dan \textbf{Transformator} merupakan dua entitas peralatan terpisah (\textit{distinct leaf devices}), bukan hubungan hierarkis bertingkat di mana trafo membawahi panel.
+\end{itemize}
+
+Berdasarkan struktur topologi tersebut, sistem menerapkan prinsip \textbf{Hierarki Agregasi Fasilitas (\textit{Cascading Facility Rollup})}. Entitas tingkat atas, yaitu \textbf{Lantai (\textit{Floor})}, \textbf{Gedung (\textit{Building})}, \textbf{Gardu (\textit{Substation})}, dan \textbf{Kawasan (\textit{Area})}, pada dasarnya tidak memiliki sensor telemetri fisik mandiri. Seluruh data operasional entitas-entitas tersebut—mencakup total daya aktif (kW), persentase utilisasi kapasitas (kVA), profil arus gabungan, hingga perambatan status keparahan alarm—merupakan \textbf{hasil komputasi agregasi bertingkat dari bawah ke atas (\textit{bottom-up cascading rollup})} dari data panel-panel listrik (serta trafo jika dilengkapi instrumen tersendiri) yang beroperasi di dalam naungan masing-masing fasilitas. Visualisasi struktur topologi jaringan kelistrikan dan mekanisme perambatan agregasi data ini disajikan pada Gambar~\ref{fig:mongrid_topologi_jaringan}.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{0.95\textwidth}{!}{%
+  \begin{tikzpicture}[
+    >=Stealth,
+    font=\sffamily,
+    facility/.style={rectangle, rounded corners=3pt, draw=blue!70!black, fill=blue!8, thick, minimum width=2.6cm, minimum height=0.75cm, align=center, font=\footnotesize\bfseries},
+    floor/.style={rectangle, rounded corners=3pt, draw=teal!70!black, fill=teal!8, thick, minimum width=2.4cm, minimum height=0.75cm, align=center, font=\footnotesize\bfseries},
+    panel/.style={rectangle, rounded corners=3pt, draw=orange!90!black, fill=orange!15, very thick, minimum width=2.2cm, minimum height=0.85cm, align=center, font=\footnotesize\bfseries},
+    trafo/.style={rectangle, rounded corners=3pt, draw=gray!70!black, fill=gray!12, thick, minimum width=2.2cm, minimum height=0.85cm, align=center, font=\footnotesize},
+    tree_line/.style={draw=black!75, thick},
+    rollup_line/.style={draw=orange!80!black, thick, dashed, ->}
+  ]
+    % Root: Area
+    \node[facility] (area) at (0, 0) {Kawasan (\textit{Area})\\\scriptsize [Fasilitas Induk Topologi]};
+
+    % Level 1: Substation & Building
+    \node[facility] (substation) at (-3.2, -1.6) {Gardu (\textit{Substation})\\\scriptsize [Fasilitas Gardu Induk]};
+    \node[facility] (building) at (3.2, -1.6) {Gedung (\textit{Building})\\\scriptsize [Fasilitas Gedung Bertingkat]};
+
+    % Connections Area -> Substation & Building
+    \draw[tree_line] (area.south) -- ++(0,-0.4) -| (substation.north);
+    \draw[tree_line] (area.south) -- ++(0,-0.4) -| (building.north);
+
+    % Substation leaves
+    \node[panel] (sub_panel) at (-4.5, -3.4) {Panel Listrik\\\scriptsize [PHBTR / Incoming]\\\tiny\color{orange!80!black}\textbf{Meter Telemetri}};
+    \node[trafo] (sub_trafo) at (-1.9, -3.4) {Transformator\\\scriptsize [Trafo Distribusi]\\\tiny (Data Aset kVA)};
+
+    \draw[tree_line] (substation.south) -- ++(0,-0.4) -| (sub_panel.north);
+    \draw[tree_line] (substation.south) -- ++(0,-0.4) -| (sub_trafo.north);
+
+    % Building child: Floor
+    \node[floor] (floor) at (3.2, -3.2) {Lantai (\textit{Floor})\\\scriptsize [Sub-Fasilitas Gedung]};
+    \draw[tree_line] (building.south) -- (floor.north);
+
+    % Floor leaves
+    \node[panel] (fl_panel) at (1.9, -4.9) {Panel Listrik\\\scriptsize [SDP / Distribusi]\\\tiny\color{orange!80!black}\textbf{Meter Telemetri}};
+    \node[trafo] (fl_trafo) at (4.5, -4.9) {Transformator\\\scriptsize [Trafo Lokal/Kering]\\\tiny (Data Aset kVA)};
+
+    \draw[tree_line] (floor.south) -- ++(0,-0.35) -| (fl_panel.north);
+    \draw[tree_line] (floor.south) -- ++(0,-0.35) -| (fl_trafo.north);
+
+    % Rollup Arrows (Agregasi Data Telemetri dari bawah ke atas)
+    \draw[rollup_line] (sub_panel.west) to[out=135,in=190] node[left, pos=0.5, font=\tiny\bfseries\color{orange!80!black}, align=right] {Agregasi\\Telemetri} (substation.west);
+    \draw[rollup_line] (fl_panel.west) to[out=120,in=200] node[left, pos=0.5, font=\tiny\bfseries\color{orange!80!black}, align=right] {Agregasi\\Beban} (floor.west);
+    \draw[rollup_line] (floor.east) to[out=45,in=-45] node[right, pos=0.5, font=\tiny\bfseries\color{orange!80!black}, align=left] {Rollup\\Status} (building.east);
+    \draw[rollup_line] (building.north) to[out=135,in=0] node[above right, pos=0.4, font=\tiny\bfseries\color{orange!80!black}] {Rollup Kawasan} (area.east);
+
+    % Legend Box
+    \node[rectangle, draw=black!40, rounded corners=2pt, fill=white, inner sep=4pt, font=\scriptsize, align=left] at (0, -6.0) {%
+      \textbf{Keterangan:}\quad
+      \tikz\node[panel, scale=0.6, baseline=-3pt] {}; Titik Akuisisi Telemetri Primer (Panel)\quad
+      \tikz\node[trafo, scale=0.6, baseline=-3pt] {}; Entitas Fisik (Trafo)\quad
+      \tikz\node[facility, scale=0.6, baseline=-3pt] {}; Fasilitas Struktural (Agregasi)
+    };
+  \end{tikzpicture}%
+  }
+  \caption{Topologi Pohon Jaringan Kelistrikan dan Aliran Agregasi Telemetri MonGrid}
+  \label{fig:mongrid_topologi_jaringan}
+\end{figure}
+
+MonGrid hadir untuk mengotomatisasi seluruh rantai data tersebut melalui digitalisasi terpadu. Sistem ini mengumpulkan telemetri berkecepatan tinggi dari ribuan titik sensor panel lapangan, melakukan normalisasi dan kalkulasi nilai rekayasa turunan secara otomatis, mengompilasi metrik agregasi fasilitas, mendeteksi anomali ambang batas alarm dalam hitungan detik, serta menyajikan dasbor pemantauan multi-skala yang interaktif bagi operator dan manajer operasional.
 
 Untuk mewujudkan kapabilitas tersebut, sistem MonGrid menuntut integrasi rekayasa perangkat lunak yang andal dengan kebutuhan fungsional dan teknis utama sebagai berikut:
 \begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
-  \item \textbf{Dukungan Telemetri Frekuensi Tinggi:} Kemampuan menyerap aliran data sensor yang tiba setiap detik tanpa kehilangan paket data atau mengalami penurunan kinerja (\textit{zero packet loss}).
-  \item \textbf{Pemrosesan Nilai Turunan Instan:} Kalkulasi nilai-nilai rekayasa kelistrikan yang tidak dikirimkan langsung oleh perangkat meter fisik, seperti arus netral fasa, persentase ketidakseimbangan beban, dan persentase kapasitas trafo.
+  \item \textbf{Dukungan Telemetri Frekuensi Tinggi:} Kemampuan menyerap aliran data sensor panel yang tiba setiap detik tanpa kehilangan paket data atau mengalami penurunan kinerja (\textit{zero packet loss}).
+  \item \textbf{Pemrosesan Nilai Turunan dan Agregasi Instan:} Kalkulasi nilai-nilai rekayasa kelistrikan yang tidak dikirimkan langsung oleh perangkat meter fisik (seperti estimasi arus fasa netral dan persentase ketidakseimbangan beban), serta komputasi agregasi beban kumulatif tingkat gardu, gedung, dan area secara langsung dari data panel anaknya.
   \item \textbf{Evaluasi Aturan Alarm Dinamis:} Evaluasi kondisi telemetri terhadap aturan ambang batas (\textit{threshold}) yang dapat dikonfigurasi secara fleksibel oleh administrator tanpa perlu melakukan kompilasi ulang kode sumber.
   \item \textbf{Sinkronisasi Multi-Penyimpanan (\textit{Polyglot Persistence}):} Penyelarasan data terpadu antara basis data relasional (PostgreSQL), basis data memori berkecepatan tinggi (Redis), dan basis data deret waktu (\textit{time-series} InfluxDB).
   \item \textbf{Penyajian Real-Time Dual-Channel pada Dasbor Web:} Antarmuka pengguna yang mampu memadukan pemuatan data historis terpaginasi via REST API dengan pembaruan status telemetri dan peringatan alarm seketika via WebSocket STOMP tanpa jeda penyegaran manual (\textit{no polling}).
@@ -173,8 +247,8 @@ Layanan \texttt{mongrid-consumer} (.NET 9 Worker Service) bertindak sebagai otak
     \texttt{(meterId, vendorParamName) -> (deviceId, category, standardCode)}
   \end{center}
   Satu perangkat fisik dapat dipetakan ke beberapa perangkat logis (\textit{fan-out}). Parameter yang tidak memiliki pemetaan diabaikan secara aman dengan pencatatan peringatan pada log sistem.
-  \item \textbf{Kalkulasi Nilai Rekayasa Turunan (\textit{Derived Values}):} Pemroses mengelompokkan data berdasarkan kategori pengukuran dan memanggil penangan khusus (\texttt{ICategoryHandler}). Pada penangan meter daya (\texttt{PowerMeterHandler}), sistem mengkalkulasi besaran rekayasa pelengkap yang tidak dikirimkan secara langsung oleh sensor perangkat keras di lapangan, mencakup estimasi arus fasa netral, deviasi ketidakseimbangan antarfasa, persentase rasio pembebanan transformator terhadap kapasitas nominalnya, serta penentuan label klasifikasi status operasional peralatan.
-  \item \textbf{Agregasi Beban Tingkat Gedung (\textit{Building Aggregation}):} Layanan \texttt{BuildingAggregateService} menelusuri topologi relasi gedung terhadap seluruh transformator di dalamnya guna menghitung ringkasan konsumsi energi dan utilisasi daya tingkat gedung secara berkala.
+  \item \textbf{Kalkulasi Nilai Rekayasa Turunan pada Panel (\textit{Derived Values}):} Pemroses mengelompokkan data berdasarkan kategori pengukuran dan memanggil penangan khusus (\texttt{ICategoryHandler}). Pada penangan meter daya (\texttt{PowerMeterHandler}), sistem mengkalkulasi besaran rekayasa pelengkap yang tidak dikirimkan secara langsung oleh sensor perangkat keras di lapangan. Kalkulasi ini berpusat pada instrumen panel, mencakup estimasi arus fasa netral, deviasi ketidakseimbangan antarfasa, persentase rasio pembebanan sisi \textit{incoming} panel terhadap kapasitas nominal transformator gardunya, serta penentuan label klasifikasi status operasional peralatan (\textit{Normal}, \textit{Warning}, atau \textit{Critical}).
+  \item \textbf{Agregasi Fasilitas Berjenjang (\textit{Cascading Facility Aggregation}):} Karena entitas tingkat atas (Gedung, Gardu, dan Area) tidak memancarkan telemetri sensor mandiri, layanan \texttt{BuildingAggregateService} dan agregator topologi menelusuri hierarki relasi fasilitas terhadap seluruh panel listrik (serta trafo jika tersedia) di bawahnya. Sistem mengakumulasikan total daya aktif (kW), total arus, dan persentase beban kumulatif fasilitas terhadap kapasitas daya tersambung, serta menyusun ringkasan ketersediaan panel pelapor secara berkala.
   \item \textbf{Distribusi Penyimpanan Terpisah (\textit{Dual Persistence}):}
   \begin{itemize}[leftmargin=*, itemsep=0pt]
     \item Nilai telemetri terkini disimpan ke Redis pada kunci hash \texttt{mongrid:device:data:\{deviceId\}} untuk melayani kebutuhan akses data instan berlatensi rendah.
@@ -201,8 +275,8 @@ Layanan \texttt{mongrid-bgservice} (.NET 9 Worker Service) bertindak sebagai ork
 Sebagaimana telah dijelaskan, \texttt{mongrid-consumer} tidak memiliki koneksi ke PostgreSQL demi menjaga performa tinggi pada jalur data telemetri. Kebutuhan data konfigurasi dipenuhi oleh tugas latar belakang yang berjalan berkala setiap 5 menit:
 \begin{itemize}[leftmargin=*, itemsep=0pt]
   \item \texttt{MeterParameterMappingSyncTask}: Mengambil tabel pemetaan meter dari PostgreSQL dan menyimpannya ke Redis pada kunci \texttt{mongrid:meter:mapping:config:\{meterId\}}.
-  \item \texttt{TrafoDetailSyncTask}: Menyinkronkan kapasitas nominal kVA, tegangan sekunder, dan batas operasional setiap transformator ke kunci \texttt{mongrid:trafo:detail:config:\{deviceId\}}.
-  \item \texttt{BuildingTopologySyncTask}: Mengompilasi hierarki gedung--lantai--trafo dan menyusun indeks balik (\textit{reverse index}) \texttt{by-trafo:\{trafoDeviceId\}} pada Redis. Indeks ini memungkinkan Consumer mengetahui relasi gedung suatu trafo secara instan ($O(1)$) saat telemetri tiba tanpa perlu menelusuri seluruh data gedung.
+  \item \texttt{TrafoDetailSyncTask}: Menyinkronkan kapasitas nominal kVA, tegangan sekunder, dan batas operasional transformator ke kunci \texttt{mongrid:trafo:detail:config:\{deviceId\}} untuk acuan kalkulasi beban sisi \textit{incoming} panel.
+  \item \texttt{BuildingTopologySyncTask}: Mengompilasi hierarki fasilitas (gedung--lantai--panel/trafo serta gardu--panel/trafo) dan menyusun indeks balik (\textit{reverse index}) \texttt{by-panel:\{panelDeviceId\}} dan \texttt{by-trafo:\{trafoDeviceId\}} pada Redis. Indeks ini memungkinkan Consumer mengetahui relasi gedung atau gardu induk dari suatu instrumen panel secara instan ($O(1)$) saat telemetri tiba tanpa perlu menelusuri ulang seluruh relasi data master.
   \item \texttt{AlarmRuleSyncTask}: Menyinkronkan daftar aturan ambang batas alarm aktif dari tabel relasional ke Redis.
 \end{itemize}
 
@@ -246,13 +320,88 @@ Repositori \texttt{mongrid-backend} disusun berdasarkan prinsip \textit{Clean Ar
   \item \textbf{API Layer:} Berisi kelas-kelas kontroler HTTP (\textit{Controllers}) yang mengekspos rute RESTful API serta konfigurasi \textit{middleware pipeline} (autentikasi JWT, penanganan galat terstandarisasi, dan pencatatan audit log).
 \end{itemize}
 
-\subsubsection{Pemodelan Hierarki Aset Kelistrikan}
+\subsubsection{Pemodelan Hierarki Aset dan Arsitektur Agregasi Data}
 
-Pengelolaan aset kelistrikan pada sistem MonGrid dimodelkan secara fleksibel menggunakan tabel induk \texttt{Device} yang diperluas melalui relasi 1:1 terhadap entitas spesifik berdasarkan tipe perangkatnya:
-\begin{center}
-  \texttt{Area -> Substation -> Building -> Floor -> Transformer -> PowerMeter}
-\end{center}
-Setiap level dalam hierarki dihubungkan melalui entitas relasi perangkat (\texttt{DeviceRelation}), memungkinkan sistem memetakan topologi jaringan distribusi yang dinamis, mulai dari tingkat wilayah manajemen, gardu induk, gedung operasional, lantai, transformator daya, hingga panel kubikel individual.
+Pengelolaan aset kelistrikan pada sistem MonGrid dimodelkan secara modular dan fleksibel menggunakan tabel induk \texttt{Device} yang diperluas melalui relasi 1:1 terhadap entitas spesifik berdasarkan tipe perangkatnya (\texttt{BuildingDetail}, \texttt{SubstationDetail}, \texttt{FloorDetail}, \texttt{PanelDetail}, dan \texttt{TrafoDetail}). Hubungan antar-aset tidak disusun secara rantai linear tunggal, melainkan diorganisasikan ke dalam topologi pohon (\textit{tree topology}) multi-cabang melalui entitas relasi perangkat (\texttt{DeviceRelation}) sebagaimana divisualisasikan pada Gambar~\ref{fig:mongrid_model_device}.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{0.98\textwidth}{!}{%
+  \begin{tikzpicture}[
+    >=Stealth,
+    font=\sffamily,
+    entity/.style={rectangle, draw=blue!80!black, fill=blue!5, thick, rounded corners=2pt, minimum width=3.2cm, inner sep=4pt, align=left, font=\scriptsize},
+    relentity/.style={rectangle, draw=teal!80!black, fill=teal!6, thick, rounded corners=2pt, minimum width=3.0cm, inner sep=4pt, align=left, font=\scriptsize},
+    detail/.style={rectangle, draw=gray!70!black, fill=gray!8, rounded corners=2pt, minimum width=2.2cm, inner sep=3pt, align=left, font=\tiny},
+    paneldetail/.style={rectangle, draw=orange!90!black, fill=orange!10, thick, rounded corners=2pt, minimum width=2.4cm, inner sep=3pt, align=left, font=\tiny},
+    link/.style={draw=black!70, thick, ->},
+    onetoone/.style={draw=gray!70, thick, dashed}
+  ]
+    % Central Entity: Device
+    \node[entity] (device) at (-1.5, 2.5) {
+      \textbf{dbs008\_device} (\textit{Device Base})\\
+      \rule{3.0cm}{0.4pt}\\
+      \texttt{+ Id : Guid [PK]}\\
+      \texttt{+ Code : string}\\
+      \texttt{+ Name : string}\\
+      \texttt{+ DeviceTypeId : Guid [FK]}\\
+      \texttt{+ ThresholdStatusId : Guid}\\
+      \texttt{+ IsOffline : bool}
+    };
+
+    % Relation Entity: DeviceRelation
+    \node[relentity] (relation) at (3.5, 2.5) {
+      \textbf{dbs008\_device\_relation}\\
+      \rule{2.8cm}{0.4pt}\\
+      \texttt{+ Id : Guid [PK]}\\
+      \texttt{+ ParentDeviceId : Guid [FK]}\\
+      \texttt{+ ChildDeviceId : Guid [FK]}\\
+      \texttt{+ Code : string}
+    };
+
+    % Self-referencing link via DeviceRelation
+    \draw[link] (device.north -| device.east) to[out=25,in=155] node[above, font=\tiny\bfseries] {1 : N (Parent)} (relation.north -| relation.west);
+    \draw[link] (relation.south -| relation.west) to[out=200,in=-20] node[above, pos=0.5, font=\tiny\bfseries] {N : 1 (Child)} (device.south -| device.east);
+
+    \node[font=\tiny\bfseries, color=blue!75!black] at (-1.5, 0.8) {Tabel Ekstensi 1 : 1 (\textit{Polymorphic Details per DeviceType}):};
+
+    % Detail Entities (1:1 extensions below Device)
+    \node[detail] (area_dt) at (-4.2, -0.1) {\textbf{DeviceAreaDetail}\\\texttt{AreaId, Address, Photo}};
+    \node[detail] (sub_dt)  at (-1.8, -0.1) {\textbf{DeviceSubstationDetail}\\\texttt{CapacityKva, Voltage}};
+    \node[detail] (bld_dt)  at (0.7, -0.1)  {\textbf{DeviceBuildingDetail}\\\texttt{BuildingTypeId, AreaId}};
+    \node[detail] (flr_dt)  at (3.2, -0.1)  {\textbf{Floor / FloorDetail}\\\texttt{FloorNumber, BuildingId}};
+
+    \node[paneldetail] (pnl_dt) at (-2.8, -1.4) {\textbf{DevicePanelDetail}\\\texttt{PanelKind, BusbarCapacity}\\\textit{\color{orange!80!black}+ PowerMeter Ingestion (Sensor)}};
+    \node[detail]      (trf_dt) at (1.2, -1.4)  {\textbf{DeviceTrafoDetail}\\\texttt{CapacityKva, PriVolt, SecVolt}\\\textit{Rating Spesifikasi Belitan}};
+
+    \draw[onetoone] (device.south) -| (area_dt.north);
+    \draw[onetoone] (device.south) -| (sub_dt.north);
+    \draw[onetoone] (device.south) -| (bld_dt.north);
+    \draw[onetoone] (device.south) -| (flr_dt.north);
+    \draw[onetoone] (device.south) -| (pnl_dt.north);
+    \draw[onetoone] (device.south) -| (trf_dt.north);
+
+    % Instantiated Tree Topology Preview (Bottom section)
+    \node[rectangle, draw=black!30, fill=black!2, rounded corners=3pt, inner sep=5pt, align=center, font=\scriptsize] at (0, -2.9) {%
+      \textbf{Struktur Relasi Topologi Hasil Resolusi Kueri (\textit{Runtime Hierarchy Graph}):}\\[3pt]
+      \texttt{[Area]} $\xrightarrow{\text{Parent-Child}}$ \texttt{[Substation]} $\xrightarrow{\text{Parent-Child}}$ \textbf{\color{orange!90!black}[Panel (PHBTR)]} $\mid$ \texttt{[Trafo]}\\[2pt]
+      \texttt{[Area]} $\xrightarrow{\text{Parent-Child}}$ \texttt{[Building]} $\xrightarrow{\text{Parent-Child}}$ \texttt{[Floor]} $\xrightarrow{\text{Parent-Child}}$ \textbf{\color{orange!90!black}[Panel (SDP)]} $\mid$ \texttt{[Trafo]}
+    };
+  \end{tikzpicture}%
+  }
+  \caption{Pemodelan Entitas Perangkat (\textit{Device}) dan Struktur Relasi Hierarkis MonGrid}
+  \label{fig:mongrid_model_device}
+\end{figure}
+
+Pohon hierarki tersebut mencakup dua cabang fasilitas yang sejajar di bawah simpul \texttt{Area}:
+\begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
+  \item \textbf{Cabang Gardu (\textit{Substation Branch}):} Menghubungkan simpul \texttt{Area} langsung ke \texttt{Substation}. Di bawah gardu, sistem langsung menaungi simpul daun peralatan (\textit{leaf devices}), yaitu \texttt{Panel} (seperti PHBTR) dan \texttt{Trafo} secara mandiri tanpa perantara lantai.
+  \item \textbf{Cabang Gedung (\textit{Building Branch}):} Menghubungkan simpul \texttt{Area} ke \texttt{Building}. Di bawah gedung, relasi diarahkan ke simpul perantara \texttt{Floor} (Lantai), di mana setiap lantai menaungi simpul daun peralatan berupa \texttt{Panel} distribusi lantai dan \texttt{Trafo} (apabila terpasang unit trafo di lantai teknis).
+\end{enumerate}
+
+Dalam model ini, \textbf{Panel} dan \textbf{Trafo} diposisikan sebagai dua entitas peralatan terpisah (\textit{distinct leaf devices}), bukan hierarki berjenjang di mana trafo membawahi panel. Simpul daun berupa \textbf{Panel Listrik} bertindak sebagai titik akuisisi telemetri primer yang terhubung langsung dengan instrumen \textit{Power Meter} di lapangan. 
+
+Sebaliknya, simpul-simpul di atasnya (\textit{Floor}, \textit{Building}, \textit{Substation}, dan \textit{Area}) berfungsi murni sebagai wadah struktural dan spasial tanpa sensor mandiri. Data kelistrikan pada entitas induk tersebut dihasilkan secara komputasi melalui \textbf{agregasi berjenjang dari bawah ke atas (\textit{bottom-up cascading rollup})}, di mana konsumsi daya aktif total (kW), pembebanan arus antarfasa, serta rasio utilisasi kapasitas dihitung secara akumulatif dari seluruh panel (serta trafo jika terpasang meter mandiri) yang bernaung di bawah simpul bersangkutan.
 
 \subsubsection{Layanan Manajemen Tiket dan Integrasi Alarm}
 
@@ -291,17 +440,17 @@ Antarmuka web MonGrid menyajikan berbagai tingkat visualisasi data operasional u
 
 \begin{figure}[H]
   \centering
-  \IfFileExists{assets/gambar/mongrid/trafo-monitoring-actual.png}{%
-    \includegraphics[width=0.92\textwidth,height=0.52\textheight,keepaspectratio]{assets/gambar/mongrid/trafo-monitoring-actual.png}%
+  \IfFileExists{assets/gambar/mongrid/panel-monitoring-actual.png}{%
+    \includegraphics[width=0.92\textwidth,height=0.52\textheight,keepaspectratio]{assets/gambar/mongrid/panel-monitoring-actual.png}%
   }{%
-    \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Dasbor Pemantauan Transformator Daya MonGrid]}\\\textit{Menampilkan pembacaan kelistrikan komprehensif, kartu status operasional, dan parameter beban trafo. (Menunggu tangkapan layar sistem riil)}}}}
-  \caption{Dasbor Pemantauan Kondisi Teknis dan Beban Transformator}
-  \label{fig:mongrid_fe_trafo}
+    \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Dasbor Pemantauan Panel Listrik MonGrid]}\\\textit{Menampilkan pembacaan kelistrikan komprehensif, kartu status operasional, diagram SLD, dan parameter beban panel. (Menunggu tangkapan layar sistem riil)}}}}
+  \caption{Dasbor Pemantauan Kondisi Teknis dan Beban Panel Listrik}
+  \label{fig:mongrid_fe_panel}
 \end{figure}
 
 \begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item \textbf{Pemantauan Transformator Daya (\textit{Trafo Monitoring}):} Sebagaimana disajikan pada Gambar~\ref{fig:mongrid_fe_trafo}, halaman ini menampilkan pembacaan kelistrikan lengkap satu trafo tertentu, mencakup tegangan antarfasa, arus fasa $R, S, T$, daya aktif/reaktif/semu, faktor daya, frekuensi, ketidakseimbangan arus dan tegangan, serta temperatur termal. Data disajikan dengan kartu status berkode warna (\textit{status-coded badges}) untuk memudahkan identifikasi beban lebih (\textit{overload}).
-  \item \textbf{Pemantauan Agregasi Gedung (\textit{Building Monitoring}):} Menampilkan visualisasi konsumsi energi tingkat gedung secara holistik. Sistem memanfaatkan parameter agregasi yang dihitung oleh Consumer untuk menyajikan persentase total kapasitas terpakai, rincian beban per lantai, dan rasio ketersediaan transformator pelapor.
+  \item \textbf{Pemantauan Panel Distribusi Listrik (\textit{Panel Monitoring}):} Sebagaimana disajikan pada Gambar~\ref{fig:mongrid_fe_panel}, halaman ini merupakan pusat pemantauan telemetri paling fundamental dan terperinci di MonGrid. Mengingat sistem berpusat pada panel, antarmuka ini menyajikan pembacaan kelistrikan lengkap satu panel tertentu (seperti Panel PHBTR NTB01 di Gardu A), mencakup tegangan antarfasa, arus fasa $R, S, T$, daya aktif/reaktif/semu, faktor daya, frekuensi, ketidakseimbangan arus, estimasi arus netral, temperatur termal per fasa, pembacaan sisi \textit{incoming} dari transformator distribusi (250 kVA), skema diagram satu garis interaktif (\textit{Single Line Diagram} - SLD), serta model visualisasi 3D gardu/panel. Data dilengkapi dengan kartu status berkode warna (\textit{status-coded badges}) untuk deteksi cepat anomali operasional.
+  \item \textbf{Pemantauan Agregasi Fasilitas (\textit{Substation, Building, \& Area Monitoring}):} Menampilkan visualisasi konsumsi energi tingkat makro (gardu, gedung, dan area operasional) secara terpadu. Sistem tidak membaca sensor terpisah pada entitas-entitas ini, melainkan mengompilasi metrik agregasi dari seluruh panel (serta trafo jika ada) di bawah naungannya untuk menyajikan persentase total kapasitas terpakai, rincian beban per site/lantai, sebaran matriks armada kelistrikan, serta rasio ketersediaan panel yang aktif melapor.
 \end{itemize}
 
 \begin{figure}[H]
@@ -310,7 +459,7 @@ Antarmuka web MonGrid menyajikan berbagai tingkat visualisasi data operasional u
     \includegraphics[width=0.92\textwidth,height=0.50\textheight,keepaspectratio]{assets/gambar/mongrid/alarm-active-actual.png}%
   }{%
     \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Antarmuka Manajemen Alarm Aktif MonGrid]}\\\textit{Menampilkan daftar alarm aktif yang disinkronkan langsung dari STOMP dan opsi konversi tiket. (Menunggu tangkapan layar sistem riil)}}}}
-  \caption{Antarmuka Manajemen Alarm Aktif dan Analisis Insiden}
+  \caption{Dasbor Analitik dan Pemantauan Alarm Aktif MonGrid}
   \label{fig:mongrid_fe_alarm}
 \end{figure}
 
@@ -325,13 +474,13 @@ Antarmuka web MonGrid menyajikan berbagai tingkat visualisasi data operasional u
 \end{figure}
 
 \begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item \textbf{Pusat Manajemen Alarm dan Peringatan (\textit{Alarm Center}):} Sebagaimana ditampilkan pada Gambar~\ref{fig:mongrid_fe_alarm}, daftar alarm aktif disinkronkan secara langsung dari siaran STOMP. Pengguna dapat meninjau rincian anomali, mengakui penanganan (\textit{acknowledgement}), serta mengeksekusi konversi insiden menjadi tiket perbaikan teknisi lapangan.
+  \item \textbf{Dasbor Analitik Alarm (\textit{Alarm Analytics Center}):} Sebagaimana ditampilkan pada Gambar~\ref{fig:mongrid_fe_alarm}, antarmuka ini menyajikan visualisasi statistik anomali jaringan secara holistik, mencakup total insiden alarm aktif, persentase alarm kritis (\textit{critical share}), sebaran alarm berdasarkan klasifikasi jenis gangguan (seperti kehilangan komunikasi meter, tegangan lebih, dan ketidakseimbangan beban), diagram donat tingkat keparahan, grafik tren frekuensi alarm berkala, serta daftar gardu dengan konsentrasi gangguan tertinggi untuk prioritas pemeliharaan preventif.
   \item \textbf{Papan Penugasan Tiket Insiden (\textit{Ticket Board}):} Gambar~\ref{fig:mongrid_fe_ticket} mengilustrasikan modul tindak lanjut operasional di mana tiket perbaikan dikelola dengan status berjenjang (\textit{Open}, \textit{In Progress}, \textit{Resolved}, \textit{Closed}), memastikan setiap peringatan anomali peralatan terselesaikan secara terdokumentasi dan terukur.
 \end{itemize}
 
 \subsection{Rancang Bangun Sistem Base Alarm dan Manajemen Siklus Hidup Alarm}
 
-Sistem peringatan dini (\textit{early warning system}) merupakan komponen paling vital dalam operasional gardu distribusi tenaga listrik. Tanpa mekanisme deteksi anomali yang tanggap, penurunan kualitas isolasi atau kelebihan beban kumparan transformator dapat berkembang menjadi kegagalan katastropik yang memicu pemadaman meluas. Penulis bertanggung jawab merancang dan mengimplementasikan modul \textit{Base Alarm} pada sistem MonGrid, mencakup pemodelan data master aturan, persistensi status alarm aktif dan inaktif, mekanisme penonaktifan otomatis (\textit{auto-off}), hingga otomasi penutupan tiket penugasan kerja (\textit{auto-close work order}) berbasis arsitektur terdistribusi yang digerakkan oleh peristiwa (\textit{event-driven architecture}).
+Sistem peringatan dini (\textit{early warning system}) merupakan komponen paling vital dalam operasional jaringan distribusi tenaga listrik. Tanpa mekanisme deteksi anomali yang tanggap, ketidakseimbangan beban fasa yang parah, arus netral yang berlebih, atau lonjakan temperatur pada kompartemen panel dan transformator dapat berkembang menjadi kegagalan katastropik yang memicu pemadaman meluas. Penulis bertanggung jawab merancang dan mengimplementasikan modul \textit{Base Alarm} pada sistem MonGrid, mencakup pemodelan data master aturan, persistensi status alarm aktif dan inaktif, mekanisme penonaktifan otomatis (\textit{auto-off}), hingga otomasi penutupan tiket penugasan kerja (\textit{auto-close work order}) berbasis arsitektur terdistribusi yang digerakkan oleh peristiwa (\textit{event-driven architecture}).
 
 \subsubsection{Pemodelan Struktur Data Master dan Konfigurasi Aturan Alarm}
 
@@ -339,13 +488,39 @@ Tahap awal pengembangan difokuskan pada analisis kebutuhan pemantauan dan penyus
 
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
   \item \textbf{Entitas Aturan Alarm (\texttt{AlarmRule} / \texttt{dbs008\_alarmrule}):} Tabel inti yang mendefinisikan formula evaluasi logika ambang batas. Setiap aturan memiliki atribut kode unik (\texttt{alarmrule\_code}), nama deskriptif (\texttt{alarmrule\_name}), ekspresi logika evaluasi (\texttt{alarmrule\_expression}), nilai pengurangan bobot indeks kesehatan (\texttt{alarmrule\_deduction}) dengan rentang nilai $0$ hingga $100$, jeda waktu toleransi pemicuan (\texttt{alarmrule\_delay}) dalam satuan detik guna mencegah alarm palsu akibat lonjakan sesaat (\textit{transient spike debounce}), serta status aktivasi (\texttt{alarmrule\_isenabled}).
-  \item \textbf{Entitas Cakupan Alarm (\texttt{AlarmScope} / \texttt{dbs008\_alarmscope}):} Mengklasifikasikan ruang lingkup operasional aturan alarm, seperti cakupan tingkat perangkat fisik (\textit{Device}), penyulang (\textit{Feeder}), transformator (\textit{Transformer}), gedung (\textit{Building}), atau gardu induk (\textit{Substation}).
+  \item \textbf{Entitas Cakupan Alarm (\texttt{AlarmScope} / \texttt{dbs008\_alarmscope}):} Mengklasifikasikan ruang lingkup operasional aturan alarm, seperti cakupan tingkat perangkat panel (\textit{Panel/Device}), penyulang (\textit{Feeder}), transformator (\textit{Transformer}), gedung (\textit{Building}), atau gardu induk (\textit{Substation}).
   \item \textbf{Entitas Tingkat Keparahan (\texttt{AlarmSeverity} / \texttt{dbs008\_alarmseverity}):} Menentukan derajat kritis gangguan operasional yang terbagi menjadi \textit{Critical}, \textit{Warning}, dan \textit{Information}. Nilai keparahan ini menentukan prioritas visualisasi pada dasbor dan memandu alur eskalasi penugasan tiket lapangan.
-  \item \textbf{Entitas Tipe Alarm (\texttt{AlarmType} / \texttt{dbs008\_alarmtype}):} Mengelompokkan jenis anomali berdasarkan domain besaran fisik kelistrikan, seperti anomali tegangan lebih/kurang (\textit{Over/Under Voltage}), beban lebih fasa (\textit{Overcurrent}), ketidakseimbangan beban fasa (\textit{Current Unbalance}), atau anomali termal minyak transformator (\textit{Thermal Overheat}).
-  \item \textbf{Entitas Pemetaan Aturan Perangkat (\texttt{AlarmRuleDevice} / \texttt{dbs008\_alarmruledevice}):} Tabel asosiasi berelasi banyak-ke-banyak (\textit{many-to-many}) yang menghubungkan satu aturan alarm dengan satu atau lebih perangkat meter fisik spesifik di lapangan.
+  \item \textbf{Entitas Tipe Alarm (\texttt{AlarmType} / \texttt{dbs008\_alarmtype}):} Mengelompokkan jenis anomali berdasarkan domain besaran fisik kelistrikan, seperti anomali tegangan lebih/kurang (\textit{Over/Under Voltage}), beban lebih fasa (\textit{Overcurrent}), ketidakseimbangan arus fasa (\textit{Current Unbalance}), arus netral kritis (\textit{Critical Neutral Current}), kehilangan komunikasi meter (\textit{Communication Loss / Panel Feeder Inactive}), atau anomali termal kompartemen (\textit{Compartment Overheat}).
+  \item \textbf{Entitas Pemetaan Aturan Perangkat (\texttt{AlarmRuleDevice} / \texttt{dbs008\_alarmruledevice}):} Tabel asosiasi berelasi banyak-ke-banyak (\textit{many-to-many}) yang menghubungkan satu aturan alarm dengan satu atau lebih perangkat meter fisik spesifik di lapangan (dengan fokus utama pada instrumen panel distribusi dan penyulang).
 \end{enumerate}
 
 Penulis mengimplementasikan lapisan repositori data (\texttt{IAlarmRuleRepository}), kelas objek transfer data (DTO), serta kontroler HTTP RESTful (\texttt{AlarmRuleController}, \texttt{AlarmScopeController}, \texttt{AlarmSeverityController}, dan \texttt{AlarmTypeController}) yang dilengkapi dengan validasi data, paginasi dinamis, dan pencatatan audit log (\textit{audit trail}).
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{assets/gambar/mongrid/alarm-rule-table.png}{%
+    \includegraphics[width=0.92\textwidth,height=0.48\textheight,keepaspectratio]{assets/gambar/mongrid/alarm-rule-table.png}%
+  }{%
+    \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Tabel Konfigurasi Aturan Alarm]}}}
+  }
+  \caption{Tabel Konfigurasi Aturan Ambang Batas Alarm (\textit{Alarm Rule})}
+  \label{fig:mongrid_fe_alarm_rule_table}
+\end{figure}
+
+Tabel aturan alarm pada Gambar~\ref{fig:mongrid_fe_alarm_rule_table} menampilkan daftar seluruh aturan evaluasi yang terdaftar di sistem beserta kode, nama, tingkat keparahan, cakupan aset, dan status aktivasinya. Untuk menambahkan atau memodifikasi formula evaluasi, administrator menggunakan antarmuka formulir konfigurasi sebagaimana ditunjukkan pada Gambar~\ref{fig:mongrid_fe_alarm_rule_form}.
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{assets/gambar/mongrid/alarm-rule-form.png}{%
+    \includegraphics[width=0.92\textwidth,height=0.48\textheight,keepaspectratio]{assets/gambar/mongrid/alarm-rule-form.png}%
+  }{%
+    \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Formulir Konfigurasi Aturan Alarm]}}}
+  }
+  \caption{Formulir Konfigurasi Parameter dan Ekspresi Logika Aturan Alarm}
+  \label{fig:mongrid_fe_alarm_rule_form}
+\end{figure}
+
+Melalui formulir pada Gambar~\ref{fig:mongrid_fe_alarm_rule_form}, administrator dapat menyusun formula kondisi dinamis berbasis sintaks ekspresi NCalc (seperti evaluasi ambang batas tegangan fasa, batas arus lebih, atau persentase ketidakseimbangan beban), menentukan derajat keparahan (\textit{severity}), bobot penalti indeks kesehatan (\textit{deduction}), serta menetapkan jeda waktu pemicuan (\textit{delay debounce}) untuk menghindari peringatan palsu akibat fluktuasi transien sesaat. Aturan yang telah didefinisikan kemudian dipetakan ke cakupan aset atau panel tertentu melalui entitas relasi perangkat, sehingga mesin evaluasi telemetri dapat menerapkan aturan tersebut secara tepat sasaran.
 
 \subsubsection{Arsitektur Persistensi Ganda Log Transaksi (\textit{Dual-Table Log Architecture})}
 
@@ -414,7 +589,20 @@ Pada antarmuka pengguna (\texttt{mongrid-frontend}), penulis dan rekan tim mengi
   \label{fig:mongrid_fe_alarm_history_table}
 \end{figure}
 
-Dasbor riwayat alarm (Gambar~\ref{fig:mongrid_fe_alarm_history_table}) menyajikan tabel data interaktif dengan fitur pencarian instan, pemilihan rentang tanggal, label status penanganan, serta tombol unduh riwayat dalam format CSV. Pengguna dapat membuka modal rincian kejadian untuk meninjau rekaman besaran telemetri sesaat saat anomali terpicu, meninjau status penonaktifan otomatis, atau mengonversi insiden menjadi tiket perintah kerja baru. Pengelolaan aturan alarm juga difasilitasi melalui formulir konfigurasi ekspresi logika matematika yang divalidasi langsung di sisi klien sebelum dikirimkan ke server backend.
+Dasbor riwayat alarm (Gambar~\ref{fig:mongrid_fe_alarm_history_table}) menyajikan tabel data interaktif dengan fitur pencarian instan, pemilihan rentang tanggal, label status penanganan, serta tombol unduh riwayat dalam format CSV. Pengguna dapat membuka modal rincian kejadian untuk meninjau rekaman besaran telemetri sesaat saat anomali terpicu sebagaimana disajikan pada Gambar~\ref{fig:mongrid_fe_alarm_detail_modal}.
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{assets/gambar/mongrid/alarm-detail-modal.png}{%
+    \includegraphics[width=0.92\textwidth,height=0.48\textheight,keepaspectratio]{assets/gambar/mongrid/alarm-detail-modal.png}%
+  }{%
+    \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Modal Rincian Insiden Alarm]}}}
+  }
+  \caption{Modal Rincian Insiden Alarm dan Opsi Pembuatan Tiket Perbaikan}
+  \label{fig:mongrid_fe_alarm_detail_modal}
+\end{figure}
+
+Modal rincian kejadian pada Gambar~\ref{fig:mongrid_fe_alarm_detail_modal} memperlihatkan nilai besaran parameter listrik sesaat yang melanggar batas, stempel waktu kejadian, serta tombol aksi cepat untuk mengonversi anomali menjadi tiket penugasan kerja bagi teknisi operasional. Pengelolaan aturan alarm juga difasilitasi melalui formulir konfigurasi ekspresi logika matematika yang divalidasi langsung di sisi klien sebelum dikirimkan ke server backend.
 
 \subsection{Rancang Bangun Sistem Percakapan Cerdas Multi-Konteks (AI Chat MonGrid)}
 
@@ -450,11 +638,13 @@ Alur percakapan pada \texttt{mongrid-backend} dikendalikan oleh layanan \texttt{
   \item \textbf{Strategi Eksekusi Agen Data (\textit{DataQueryHandler}):} Jika intensi bertipe \texttt{data-query}, orkestrator memuat profil konteks perangkat (\texttt{DeviceContextProfile}) dan mengaktifkan agen cerdas berbasis model penalaran tingkat lanjut yang dibekali sekumpulan instrumen domain (\textit{domain-specific tools}).
   \item \textbf{Implementasi Instrumen Domain Kelistrikan:} Penulis mengimplementasikan kelas dasar generik (\texttt{BaseTool}) dan puluhan instrumen terspesialisasi yang dikelompokkan berdasarkan entitas:
   \begin{itemize}[leftmargin=*, itemsep=0pt]
-    \item \textbf{Instrumen Gedung (\textit{Building Tools}):} \texttt{ResolveBuildingTool} (resolusi nama gedung ke identitas perangkat melalui pencocokan berbasis kedekatan teks/\textit{fuzzy scoring}), \texttt{GetBuildingDetailTool} (informasi struktur dan lantai), \texttt{ListBuildingsTool} (penyaringan dan pemeringkatan gedung), \texttt{CompareBuildingsTool} (komparasi multi-parameter beban gedung), \texttt{GetBuildingSensorDataTool} (pembacaan telemetri terkini), \texttt{GetBuildingTrendTool} (analisis tren historis InfluxDB), dan \texttt{GetFloorListTool}.
-    \item \textbf{Instrumen Gardu Induk (\textit{Substation Tools}):} \texttt{ResolveSubstationTool}, \texttt{GetSubstationDetailTool}, \texttt{ListSubstationsTool}, \texttt{CompareSubstationsTool}, \texttt{GetSubstationSensorDataTool}, \texttt{GetSubstationTrendTool}, dan \texttt{GetSubstationAlarmsTool}.
+    \item \textbf{Instrumen Panel Listrik (\textit{Panel Tools}):} Merupakan instrumen paling esensial dalam akuisisi telemetri riil, mencakup \texttt{ResolvePanelTool}, \texttt{GetPanelDetailTool}, \texttt{ListPanelsTool}, \texttt{ComparePanelsTool}, \texttt{GetPanelParametersTool}, \texttt{GetPanelTrendTool}, \texttt{GetPanelAlarmsTool}, dan \texttt{GetPanelIndexTrendTool}.
+    \item \textbf{Instrumen Gedung (\textit{Building Tools}):} \texttt{ResolveBuildingTool} (resolusi nama gedung ke identitas perangkat melalui pencocokan berbasis kedekatan teks/\textit{fuzzy scoring}), \texttt{GetBuildingDetailTool} (informasi struktur dan lantai), \texttt{ListBuildingsTool} (penyaringan dan pemeringkatan gedung), \texttt{CompareBuildingsTool} (komparasi multi-parameter beban gedung berbasis agregasi panel), \texttt{GetBuildingSensorDataTool} (pembacaan telemetri terkini hasil akumulasi panel), \texttt{GetBuildingTrendTool} (analisis tren historis InfluxDB), dan \texttt{GetFloorListTool}.
+    \item \textbf{Instrumen Gardu Induk (\textit{Substation Tools}):} \texttt{ResolveSubstationTool}, \texttt{GetSubstationDetailTool}, \texttt{ListSubstationsTool}, \texttt{CompareSubstationsTool}, \texttt{GetSubstationSensorDataTool} (agregasi telemetri panel incoming dan jurusan di gardu), \texttt{GetSubstationTrendTool}, dan \texttt{GetSubstationAlarmsTool}.
     \item \textbf{Instrumen Transformator Daya (\textit{Trafo Tools}):} \texttt{ResolveTrafoTool}, \texttt{GetTrafoDetailTool}, \texttt{ListTrafosTool}, \texttt{CompareTrafosTool}, \texttt{GetTrafoSensorDataTool}, \texttt{GetTrafoTrendTool}, \texttt{GetTrafoAlarmsTool}, dan \texttt{GetTrafoIndexTrendTool}.
     \item \textbf{Instrumen Panel ACOS (\textit{ACOS Tools}):} \texttt{ResolveAcosTool}, \texttt{ListAcosTool}, \texttt{GetAcosStatusTool}, \texttt{GetAcosParametersTool}, \texttt{GetAcosAlarmsTool}, dan \texttt{GetAcosTrendTool}.
   \end{itemize}
+  Ketika pengguna menanyakan evaluasi kondisi atau tren beban fasilitas makro (Gedung, Gardu, atau Kawasan), agen cerdas MonGrid secara otomatis memanggil instrumen agregasi yang mengakumulasikan parameter dari panel-panel (dan trafo jika ada) di dalamnya.
 \end{enumerate}
 
 \subsubsection{Emisi Widget Visual dan Mekanisme Deduplikasi (\textit{Widget Deduplication})}
@@ -474,22 +664,37 @@ Mengingat telemetri gardu listrik merupakan data infrastruktur vital dan rahasia
 Penulis mengimplementasikan strategi pertahanan berlapis (\textit{defense-in-depth}) pada ekosistem AI:
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
   \item \textbf{Validasi Hak Akses Perangkat pada Setiap Instrumen:} Setiap instrumen domain menginjeksi layanan \texttt{IDeviceAccessFilterService}. Sebelum mengembalikan data sensor atau metrik analitis, instrumen memvalidasi identitas perangkat target terhadap daftar perangkat yang diizinkan bagi pengguna (\texttt{accessibleDeviceIds}). Jika perangkat berada di luar wewenang, instrumen menolak akses secara santun dan netral (\textit{Access Denial Handling}) tanpa membocorkan eksistensi teknis perangkat terkait.
-  \item \textbf{Pembatasan Cakupan Tingkat Instans (\textit{Device-Instance Scoping}):} Saat pengguna membuka jendela obrolan AI dari dalam halaman transformator tertentu (misalnya Trafo Gedung A), sistem menyematkan cakupan \texttt{trafoId} pada sesi. Apabila pengguna mencoba mengajukan pertanyaan mengenai transformator di fasilitas lain, penangan kueri (\texttt{DataQueryHandler}) mendeteksi anomali perpindahan konteks instans dan mengarahkan model untuk menegaskan batasan halaman operasional yang sedang aktif.
+  \item \textbf{Pembatasan Cakupan Tingkat Instans (\textit{Device-Instance Scoping}):} Saat pengguna membuka jendela obrolan AI dari dalam halaman panel atau peralatan tertentu (misalnya Panel PHBTR NTB01 di Gardu A), sistem menyematkan cakupan identitas perangkat (\texttt{entityDeviceId} dan \texttt{entityType}) pada sesi obrolan. Apabila pengguna mencoba mengajukan pertanyaan mengenai perangkat di fasilitas lain yang berada di luar konteks halamannya, penangan kueri (\texttt{DataQueryHandler}) mendeteksi anomali perpindahan konteks instans dan mengarahkan model untuk menegaskan batasan aset operasional yang sedang dibuka secara santun.
   \item \textbf{Mitigasi Injeksi Header dan Eskalasi Hak Akses:} Sistem backend memvalidasi seluruh header permintaan dan memastikan identitas pengguna (\texttt{userId}) dan daftar izin perangkat diekstraksi secara kriptografis dari token JWT yang terverifikasi, bukan dari parameter masukan pengguna.
 \end{enumerate}
 
 \begin{figure}[H]
   \centering
   \IfFileExists{assets/gambar/mongrid/ai-chat-interface.png}{%
-    \includegraphics[width=0.92\textwidth,height=0.50\textheight,keepaspectratio]{assets/gambar/mongrid/ai-chat-interface.png}%
+    \includegraphics[width=0.92\textwidth,height=0.48\textheight,keepaspectratio]{assets/gambar/mongrid/ai-chat-interface.png}%
   }{%
-    \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Antarmuka Percakapan AI Chat MonGrid]}\\\textit{Menampilkan percakapan interaktif operator dengan asisten cerdas MonGrid, alur streaming respons, dan kartu widget visual hasil pemanggilan tool.}}}
+    \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Antarmuka Percakapan AI Chat MonGrid]}}}
   }
-  \caption{Antarmuka Asisten Percakapan Cerdas Multi-Konteks MonGrid}
+  \caption{Antarmuka Asisten Percakapan Cerdas Multi-Konteks MonGrid pada Halaman Panel}
   \label{fig:mongrid_fe_ai_chat}
 \end{figure}
 
-Gambar~\ref{fig:mongrid_fe_ai_chat} mengilustrasikan tampilan antarmuka \textit{AI Chat} pada peramban web operator. Pengguna dapat mengajukan pertanyaan operasional dalam bahasa alami, menerima penjelasan naratif yang mengalir secara \textit{real-time}, serta meninjau kartu ringkasan status kelistrikan dan grafik tren beban yang disajikan secara terintegrasi di dalam panel obrolan.
+Gambar~\ref{fig:mongrid_fe_ai_chat} mengilustrasikan tampilan laci (\textit{drawer}) antarmuka \textit{AI Chat} saat dibuka langsung dari halaman pemantauan panel listrik. Sistem secara otomatis mengikat sesi percakapan pada cakupan instans panel yang sedang ditinjau dan menyajikan rekomendasi pertanyaan operasional yang relevan (seperti indeks kesehatan, kritikalitas, dan risiko aset). 
+
+Ketika operator mengajukan pertanyaan analisis operasional (misalnya pertanyaan tren suhu operasional), asisten AI mengeksekusi instrumen data yang sesuai (\textit{tool calling}) dan menyajikan respons naratif terpadu yang diperkaya dengan komponen visual dinamis, sebagaimana ditunjukkan pada Gambar~\ref{fig:mongrid_fe_ai_widget}.
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{assets/gambar/mongrid/ai-chat-widget.png}{%
+    \includegraphics[width=0.92\textwidth,height=0.48\textheight,keepaspectratio]{assets/gambar/mongrid/ai-chat-widget.png}%
+  }{%
+    \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Widget Grafik Visual Respons AI Chat]}}}
+  }
+  \caption{Visualisasi Widget Respons AI Berupa Grafik Tren Temperatur Panel (\textit{Tool Calling})}
+  \label{fig:mongrid_fe_ai_widget}
+\end{figure}
+
+Sebagaimana disajikan pada Gambar~\ref{fig:mongrid_fe_ai_widget}, asisten AI mampu menyajikan grafik tren temperatur fasa ($R, S, T$) dan suhu ambien selama tujuh hari terakhir lengkap dengan \textit{tooltip} data sesaat, diikuti dengan ringkasan kesimpulan kondisi teknis peralatan. Kemampuan ini membuktikan efektivitas orkestrasi agen dalam memadukan analisis telemetri berkecepatan tinggi dengan penyajian antarmuka interaktif yang langsung dapat diandalkan oleh teknisi gardu.
 
 \subsection{Rancang Bangun Modul Pemetaan Geografis (GIS Map View) dan Agregasi Status Hierarkis}
 
@@ -497,22 +702,22 @@ Dalam pengawasan jaringan kelistrikan skala kota atau kawasan industri luas, vis
 
 \subsubsection{Rekonstruksi Pohon Hierarki Topologi Jaringan}
 
-Sistem MonGrid memodelkan fasilitas kelistrikan ke dalam topologi bertingkat enam level: \texttt{Area} $\rightarrow$ \texttt{Substation} $\rightarrow$ \texttt{Building} $\rightarrow$ \texttt{Floor} $\rightarrow$ \texttt{Transformer} $\rightarrow$ \texttt{Panel}. Tantangan teknis utama pada modul pemetaan adalah merekonstruksi pohon hierarki yang kompleks ini ke dalam struktur data JSON yang efisien tanpa memicu masalah penurunan performa kueri berulang (\textit{N+1 query problem}).
+Sistem MonGrid memodelkan fasilitas kelistrikan ke dalam topologi pohon (\textit{tree topology}) multi-cabang dengan simpul akar \texttt{Area}, cabang fasilitas sejajar \texttt{Substation} dan \texttt{Building}, simpul perantara \texttt{Floor} pada gedung, serta simpul daun peralatan (\textit{leaf devices}) berupa \texttt{Panel} dan \texttt{Transformer}. Tantangan teknis utama pada modul pemetaan adalah merekonstruksi pohon hierarki bercabang ini ke dalam struktur data JSON yang efisien tanpa memicu masalah penurunan performa kueri berulang (\textit{N+1 query problem}).
 
 Penulis mengimplementasikan metode \texttt{MapService.GetMapViewAsync} dengan strategi rekayasa sebagai berikut:
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
   \item \textbf{Pemuatan Data Terpadu (\textit{Eager Loading Single-Pass}):} Seluruh entitas perangkat aktif dimuat dalam satu lintasan kueri basis data dengan menyertakan relasi relasional (\texttt{ChildLinks}, \texttt{DeviceType}, \texttt{ThresholdStatus}, \texttt{BuildingDetail}, \texttt{SubstationDetail}, \texttt{FloorDetail}, \texttt{TrafoDetail}, dan \texttt{PanelDetail}). Seluruh entitas diindeks ke dalam kamus memori (\texttt{deviceDict}) berakses instan $O(1)$.
-  \item \textbf{Penyusunan Pohon Fasilitas Bertingkat:} Entitas gedung (\textit{Building}) dipetakan menaungi lantai-lantai (\textit{Floors}), yang selanjutnya menaungi transformator (\textit{Trafos}) dan panel distribusi (\textit{Panels}). Entitas gardu induk (\textit{Substation}) disusun menaungi transformator dan panel daya secara langsung.
-  \item \textbf{Penanganan Panel Otonom (\textit{Flat Leaf Panels}):} Dalam kondisi di mana pengguna hanya memiliki izin akses terhadap panel tertentu tanpa memiliki hak akses ke gedung atau lantai induknya, panel tersebut tidak dapat dijangkau melalui pohon fasilitas utama. Sistem mendeteksi simpul yatim (\textit{orphan leaf nodes}) tersebut dan mengeksposnya sebagai elemen peta mandiri (\textit{flat map items}) agar seluruh aset yang berhak diawasi oleh pengguna tetap terpantau pada peta.
+  \item \textbf{Penyusunan Pohon Fasilitas Bertingkat:} Entitas gedung (\textit{Building}) dipetakan menaungi lantai-lantai (\textit{Floors}), yang selanjutnya menaungi panel-panel distribusi listrik (\textit{Panels}) serta transformator (\textit{Trafos} jika ada). Entitas gardu induk (\textit{Substation}) disusun menaungi panel hubung bagi utama (seperti PHBTR) dan transformator gardu secara langsung.
+  \item \textbf{Penanganan Panel Otonom (\textit{Flat Leaf Panels}):} Karena titik telemetri dan kontrol izin operasional berpusat pada panel, dalam kondisi di mana pengguna hanya memiliki izin akses terhadap panel tertentu tanpa memiliki hak akses ke gedung atau lantai induknya, panel tersebut tidak dapat dijangkau melalui pohon fasilitas utama. Sistem mendeteksi simpul yatim (\textit{orphan leaf nodes}) tersebut dan mengeksposnya sebagai elemen peta mandiri (\textit{flat map items}) agar seluruh aset yang berhak diawasi oleh pengguna tetap terpantau pada peta.
 \end{enumerate}
 
 \subsubsection{Kalkulasi Agregasi Status Keparahan (\textit{Status Rollup}) dan Deteksi Status Luring (\textit{Offline Rollup})}
 
-Marker visual gedung dan gardu induk pada peta harus mencerminkan kondisi operasional terburuk dari seluruh peralatan yang berada di bawah naungannya. Penulis merancang algoritma kalkulasi status hierarkis (\textit{status rollup}):
+Marker visual gedung dan gardu induk pada peta harus mencerminkan kondisi operasional terburuk dari seluruh peralatan yang berada di bawah naungannya. Mengingat sensor telemetri terpasang pada panel, penulis merancang algoritma kalkulasi status hierarkis (\textit{status rollup}):
 
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
-  \item \textbf{Agregasi Berbasis Bobot Keparahan (\textit{Severity Rank Ordering}):} Status ambang batas (\textit{ThresholdStatus}) memiliki urutan prioritas numerik: \textit{Critical} (bobot tertinggi) > \textit{Warning} > \textit{Information} > \textit{Normal}. Metode \texttt{ComputeBuildingRealStatus} menelusuri seluruh transformator dan panel di dalam gedung. Status fasilitas gedung ditetapkan mengikuti derajat anomali terparah yang sedang dialami oleh salah satu peralatan anaknya.
-  \item \textbf{Deteksi Fasilitas Luring (\textit{Offline Status Rollup}):} Jika seluruh meter sensor di bawah suatu gedung atau gardu induk berhenti mengirimkan telemetri (melebihi batas waktu toleransi detak komunikasi lapangan), atribut \texttt{isOffline} pada fasilitas diaktifkan. Penulis memastikan bahwa penetapan status luring tidak menimpa (\textit{overwrite}) kode status ambang batas peralatan, dan sebaliknya anomali sensor tidak menyamarkan fakta bahwa komunikasi perangkat sedang terputus.
+  \item \textbf{Agregasi Berbasis Bobot Keparahan (\textit{Severity Rank Ordering}):} Status ambang batas (\textit{ThresholdStatus}) memiliki urutan prioritas numerik: \textit{Critical} (bobot tertinggi) > \textit{Warning} > \textit{Information} > \textit{Normal}. Metode \texttt{ComputeBuildingRealStatus} dan \texttt{ComputeSubstationRealStatus} menelusuri seluruh panel listrik (serta trafo jika ada) di dalam fasilitas. Status fasilitas gedung atau gardu secara dinamis ditetapkan mengikuti derajat anomali terparah yang sedang dialami oleh salah satu panel anaknya.
+  \item \textbf{Deteksi Fasilitas Luring (\textit{Offline Status Rollup}):} Jika seluruh instrumen panel di bawah suatu gedung atau gardu induk berhenti mengirimkan telemetri (melebihi batas waktu toleransi detak komunikasi lapangan), atribut \texttt{isOffline} pada fasilitas diaktifkan. Penulis memastikan bahwa penetapan status luring tidak menimpa (\textit{overwrite}) kode status ambang batas peralatan, dan sebaliknya anomali sensor tidak menyamarkan fakta bahwa komunikasi perangkat sedang terputus.
 \end{enumerate}
 
 \subsubsection{Pengayaan Geospasial pada Log Alarm dan Titik Akses Ringkasan Operasional}
@@ -539,11 +744,37 @@ Pada sisi antarmuka (\texttt{mongrid-frontend}), peta interaktif dibangun menggu
   \label{fig:mongrid_fe_gis_map}
 \end{figure}
 
-Dasbor pemetaan pada Gambar~\ref{fig:mongrid_fe_gis_map} dilengkapi dengan kontrol legenda bertab (\textit{tabbed legend control}) yang memadukan tab Ikhtisar Kawasan, tab Klasifikasi Fasilitas, dan tab Filter Status Alarm. Operator dapat menyaring tampilan peta berdasarkan tingkat keparahan tertentu, memantau indikator status luring, serta membuka modal rincian fasilitas bertab untuk menginspeksi peralatan internal tanpa meninggalkan konteks pemetaan geografis.
+Dasbor pemetaan pada Gambar~\ref{fig:mongrid_fe_gis_map} menyajikan visualisasi sebaran geospasial gardu, gedung, panel, dan trafo. Untuk mempermudah pengelompokan dan diagnosis insiden, antarmuka dilengkapi dengan kontrol legenda interaktif bertab sebagaimana ditampilkan pada Gambar~\ref{fig:mongrid_fe_gis_map_legend}.
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{assets/gambar/mongrid/gis-map-legend-filter.png}{%
+    \includegraphics[width=0.92\textwidth,height=0.48\textheight,keepaspectratio]{assets/gambar/mongrid/gis-map-legend-filter.png}%
+  }{%
+    \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Kontrol Legenda dan Filter GIS Peta]}}}
+  }
+  \caption{Kontrol Legenda Bertab dan Panel Penyaringan Status Keparahan Peta GIS}
+  \label{fig:mongrid_fe_gis_map_legend}
+\end{figure}
+
+Kontrol legenda pada Gambar~\ref{fig:mongrid_fe_gis_map_legend} memungkinkan operator memfilter penanda visual berdasarkan tingkat keparahan alarm (\textit{Critical}, \textit{Warning}, \textit{Normal}) serta status luring (\textit{offline rollup}). Selain itu, ketika operator mengeklik salah satu marker fasilitas pada peta, sistem membuka modal rincian telemetri fasilitas sebagaimana diilustrasikan pada Gambar~\ref{fig:mongrid_fe_gis_map_detail}.
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{assets/gambar/mongrid/gis-map-detail-modal.png}{%
+    \includegraphics[width=0.92\textwidth,height=0.48\textheight,keepaspectratio]{assets/gambar/mongrid/gis-map-detail-modal.png}%
+  }{%
+    \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Modal Rincian Fasilitas GIS Peta]}}}
+  }
+  \caption{Modal Rincian Status Operasional dan Telemetri Fasilitas Peta GIS}
+  \label{fig:mongrid_fe_gis_map_detail}
+\end{figure}
+
+Modal rincian fasilitas (Gambar~\ref{fig:mongrid_fe_gis_map_detail}) menyajikan kondisi telemetri terperinci saat penanda gardu distribusi (Gardu A) diklik pada peta. Antarmuka menampilkan status operasional panel aktif (Panel PHBTR NTB01), indikator persentase ketidakseimbangan arus fasa ($7{,}7\%$), rasio pembebanan terhadap kapasitas nominal transformator gardu ($56{,}1\%$ dari $250\text{ kVA}$), arus netral, profil tegangan dan arus \textit{incoming} 3-fasa, serta model visualisasi 3D gardu dan kompartemen panel, memberikan pemahaman situasional seketika bagi tim pengawas lapangan tanpa harus meninggalkan peta.
 
 \subsection{Rancang Bangun Kontrol Akses Perangkat Karyawan (Employee Device Access RBAC)}
 
-Dalam ekosistem infrastruktur kelistrikan skala enterprise, pengelolaan hak akses data pengguna tidak cukup hanya mengandalkan pembatasan menu aplikasi. Seorang teknisi operasional Gardu Wilayah Selatan tidak boleh melihat data beban atau alarm dari Transformator Wilayah Utara, sementara manajer gedung hanya berhak mengakses aset yang berada di dalam lingkup gedungnya. Penulis bertanggung jawab merancang dan mengimplementasikan sistem kontrol akses perangkat berbasis peran (\textit{Employee Device Access Role-Based Access Control} - RBAC) yang terintegrasi secara komprehensif ke seluruh lapisan arsitektur MonGrid.
+Dalam ekosistem infrastruktur kelistrikan skala enterprise, pengelolaan hak akses data pengguna tidak cukup hanya mengandalkan pembatasan menu aplikasi. Seorang teknisi operasional Gardu Wilayah Selatan tidak boleh melihat data beban atau alarm dari panel dan peralatan di Gardu Wilayah Utara, sementara manajer gedung hanya berhak mengakses aset yang berada di dalam lingkup gedungnya. Penulis bertanggung jawab merancang dan mengimplementasikan sistem kontrol akses perangkat berbasis peran (\textit{Employee Device Access Role-Based Access Control} - RBAC) yang terintegrasi secara komprehensif ke seluruh lapisan arsitektur MonGrid.
 
 \subsubsection{Pemodelan Struktur Data Hak Akses Non-Hierarkis}
 
@@ -551,8 +782,8 @@ Struktur perizinan perangkat dirancang fleksibel melalui entitas \texttt{Employe
 
 Karakteristik penting dari model perizinan ini adalah sifatnya yang non-hierarkis dan adaptif:
 \begin{itemize}[leftmargin=*, itemsep=0pt]
-  \item Administrator dapat menetapkan izin pada simpul induk tingkat tinggi, seperti Wilayah (\textit{Area}) atau Gardu Induk (\textit{Substation}).
-  \item Administrator juga dapat memberikan izin khusus pada simpul daun spesifik, seperti satu transformator daya (\textit{Trafo}) atau panel kubikel individual tanpa harus memberikan izin ke seluruh gedung induknya.
+  \item Administrator dapat menetapkan izin pada simpul induk tingkat tinggi, seperti Wilayah (\textit{Area}), Gardu Induk (\textit{Substation}), atau Gedung (\textit{Building}).
+  \item Administrator juga dapat memberikan izin khusus secara granular pada simpul daun spesifik, seperti satu panel distribusi listrik (\textit{Panel}) atau transformator individual tanpa harus memberikan izin ke seluruh fasilitas induknya.
 \end{itemize}
 
 Penulis membangun lapisan repositori data (\texttt{IEmployeeDeviceAccessRepository}), layanan bisnis (\texttt{EmployeeDeviceAccessService}), serta titik akses RESTful (\texttt{EmployeeDeviceAccessController}) yang melayani operasi \textit{upsert} perizinan massal, paginasi daftar perangkat yang tersedia (\textit{available devices}), dan pencatatan riwayat perubahan hak akses.
@@ -564,7 +795,7 @@ Untuk mencegah duplikasi logika pengecekan hak akses di setiap kontroler API, pe
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
   \item \textbf{Ekstraksi Identitas dan Validasi Silang Kredensial (\textit{Cross-Validation}):} Layanan mengekstrak klaim \texttt{user\_id} dan peran (\textit{roles}) langsung dari token JWT yang terenkripsi. Apabila permintaan menyertakan header peran aktif (\texttt{X-Role-Active}), sistem melakukan validasi silang (\textit{cross-validation}) untuk memastikan peran tersebut benar-benar tercantum dalam klaim JWT pengguna. Upaya pemalsuan header untuk eskalasi hak akses (\textit{privilege escalation}) ditolak secara otomatis.
   \item \textbf{Pengecualian Peran Administratif (\textit{Unrestricted Bypass}):} Pengguna dengan peran \texttt{super-admin} atau \texttt{developer} secara otomatis diidentifikasi sebagai pengguna tanpa batas (\texttt{IsUnrestricted = true}), sehingga evaluasi kueri tidak dibebani oleh penyaringan hak akses perangkat.
-  \item \textbf{Resolusi Pohon Akses Transitif (\textit{Transitive Downward Tree Traversal}):} Jika pengguna memiliki pembatasan akses, layanan mengevaluasi seluruh perangkat yang ditugaskan kepada karyawan. Apabila pengguna diberikan akses ke suatu Gedung, sistem menelusuri pohon relasi \texttt{DeviceRelation} ke arah bawah (\textit{downward traversal}) untuk mengikutsertakan seluruh ID lantai, transformator, dan panel anaknya. Seluruh ID perangkat yang diizinkan dikompilasi ke dalam himpunan \textit{hash} memori (\texttt{HashSet<Guid>}) yang di-\textit{cache} selama siklus hidup permintaan HTTP berlangsung ($O(1)$ \textit{membership test}).
+  \item \textbf{Resolusi Pohon Akses Transitif (\textit{Transitive Downward Tree Traversal}):} Jika pengguna memiliki pembatasan akses, layanan mengevaluasi seluruh perangkat yang ditugaskan kepada karyawan. Apabila pengguna diberikan akses ke suatu Gedung atau Gardu, sistem menelusuri pohon relasi \texttt{DeviceRelation} ke arah bawah (\textit{downward traversal}) untuk mengikutsertakan seluruh ID lantai, transformator, dan terutama panel-panel anak di dalamnya. Seluruh ID perangkat yang diizinkan dikompilasi ke dalam himpunan \textit{hash} memori (\texttt{HashSet<Guid>}) yang di-\textit{cache} selama siklus hidup permintaan HTTP berlangsung ($O(1)$ \textit{membership test}).
 \end{enumerate}
 
 \subsubsection{Integrasi Menyeluruh Lintas Modul Sistem}
@@ -577,7 +808,7 @@ Melalui metode ekstensi LINQ \texttt{ApplyDeviceAccessFilter}, pembatasan hak ak
   \item \textbf{Penegakan Cakupan Asisten AI Chat (\textit{Two-Tier AI Scoping}):}
   \begin{itemize}[leftmargin=*, itemsep=0pt]
     \item \textbf{Tingkat Tipe Perangkat (\textit{Device-Type Level}):} Mencegah pengguna menanyakan entitas yang sama sekali tidak memiliki izin akses dalam profil perannya.
-    \item \textbf{Tingkat Instans Perangkat (\textit{Device-Instance Level}):} Mengunci instrumen AI agar menolak perintah membaca data perangkat lain saat obrolan berada di dalam halaman transformator atau fasilitas tertentu, mengeliminasi celah kebocoran data operasional (\textit{data leakage}).
+    \item \textbf{Tingkat Instans Perangkat (\textit{Device-Instance Level}):} Mengunci instrumen AI agar menolak perintah membaca data perangkat lain saat obrolan berada di dalam halaman panel atau fasilitas tertentu, mengeliminasi celah kebocoran data operasional (\textit{data leakage}).
   \end{itemize}
 \end{enumerate}
 
@@ -592,7 +823,20 @@ Melalui metode ekstensi LINQ \texttt{ApplyDeviceAccessFilter}, pembatasan hak ak
   \label{fig:mongrid_fe_device_access}
 \end{figure}
 
-Gambar~\ref{fig:mongrid_fe_device_access} menyajikan antarmuka manajemen hak akses perangkat karyawan pada panel pengaturan sistem. Administrator dapat meninjau daftar penugasan izin perangkat, menambahkan hak akses baru berdasarkan tipe fasilitas atau perangkat individual, serta memperbarui cakupan wewenang teknisi secara terpusat dan aman.
+Gambar~\ref{fig:mongrid_fe_device_access} menyajikan antarmuka manajemen hak akses perangkat karyawan pada panel pengaturan sistem. Administrator dapat meninjau daftar penugasan izin perangkat per karyawan secara transparan. Untuk menetapkan atau memperbarui izin aset secara efisien, administrator menggunakan modal konfigurasi izin pilihan majemuk (\textit{multi-select}) sebagaimana ditunjukkan pada Gambar~\ref{fig:mongrid_fe_device_access_modal}.
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{assets/gambar/mongrid/employee-device-access-modal.png}{%
+    \includegraphics[width=0.92\textwidth,height=0.48\textheight,keepaspectratio]{assets/gambar/mongrid/employee-device-access-modal.png}%
+  }{%
+    \framebox[\textwidth][c]{\rule{0pt}{4cm}\parbox{0.8\textwidth}{\centering \textbf{[Tangkapan Layar UI: Modal Penugasan Izin Akses Perangkat]}}}
+  }
+  \caption{Modal Penugasan Hak Akses Perangkat Berbasis Pilihan Majemuk (\textit{Multi-Select})}
+  \label{fig:mongrid_fe_device_access_modal}
+\end{figure}
+
+Melalui modal pada Gambar~\ref{fig:mongrid_fe_device_access_modal}, administrator dapat memilih perangkat dari berbagai tipe (area, gardu, gedung, lantai, hingga panel individual) dengan mekanisme centang majemuk. Sistem kemudian mengeksekusi operasi \textit{bulk upsert} pada basis data dan memperbarui pohon izin pengguna secara instan tanpa memerlukan penghentian layanan.
 
 %============================================================
 \section{PROYEK PT MAKASSAR TRANS}

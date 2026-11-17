@@ -1,14 +1,16 @@
 import os
-import json
 import sys
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-def get_drive_service(creds_data):
-    creds_dict = json.loads(creds_data)
-    credentials = service_account.Credentials.from_service_account_info(
-        creds_dict,
+def get_drive_service(client_id, client_secret, refresh_token):
+    credentials = Credentials(
+        token=None,
+        refresh_token=refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=client_id,
+        client_secret=client_secret,
         scopes=['https://www.googleapis.com/auth/drive']
     )
     return build('drive', 'v3', credentials=credentials)
@@ -25,7 +27,6 @@ def upload_or_update_file(service, folder_id, file_path, target_name, overwrite=
     media = MediaFileUpload(file_path, mimetype='application/pdf', resumable=True)
 
     if overwrite:
-        # Cari file dengan target_name di folder_id yang belum dihapus
         query = f"'{folder_id}' in parents and name = '{target_name}' and trashed = false"
         response = service.files().list(
             q=query,
@@ -45,7 +46,6 @@ def upload_or_update_file(service, folder_id, file_path, target_name, overwrite=
             print(f"Successfully updated {target_name}. Link: {updated_file.get('webViewLink')}")
             return updated_file
 
-    # Buat file baru
     file_metadata = {
         'name': target_name,
         'parents': [folder_id]
@@ -60,7 +60,9 @@ def upload_or_update_file(service, folder_id, file_path, target_name, overwrite=
     return new_file
 
 def main():
-    creds_data = os.environ.get('GDRIVE_CREDENTIALS_DATA')
+    client_id = os.environ.get('GDRIVE_CLIENT_ID')
+    client_secret = os.environ.get('GDRIVE_CLIENT_SECRET')
+    refresh_token = os.environ.get('GDRIVE_REFRESH_TOKEN')
     folder_id = os.environ.get('GDRIVE_FOLDER_ID')
     archive_folder_id = os.environ.get('GDRIVE_ARCHIVE_FOLDER_ID')
     pdf_path = os.environ.get('PDF_PATH', 'build/main_buku.pdf')
@@ -68,15 +70,15 @@ def main():
     build_number = os.environ.get('BUILD_NUMBER', '0')
     git_sha = os.environ.get('GIT_SHA', 'latest')
 
-    if not creds_data or not folder_id:
-        print("Error: GDRIVE_CREDENTIALS_DATA or GDRIVE_FOLDER_ID not provided!")
+    if not client_id or not client_secret or not refresh_token or not folder_id:
+        print("Error: GDRIVE_CLIENT_ID, GDRIVE_CLIENT_SECRET, GDRIVE_REFRESH_TOKEN, or GDRIVE_FOLDER_ID missing!")
         sys.exit(1)
 
     if not os.path.exists(pdf_path):
         print(f"Error: PDF file not found at {pdf_path}!")
         sys.exit(1)
 
-    service = get_drive_service(creds_data)
+    service = get_drive_service(client_id, client_secret, refresh_token)
 
     # 1. Update/Upload 'Buku-KP-Latest.pdf' di folder utama (selalu overwrite)
     print("\n--- [1/2] Processing Latest Build ---")

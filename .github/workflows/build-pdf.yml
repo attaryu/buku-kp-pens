@@ -1,0 +1,84 @@
+name: Build and Upload PDF
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Extract Document Version
+        id: get_version
+        run: |
+          # Ekstrak nilai \VersiBuku dari config/variables.tex
+          VERSION=$(grep -oP '\\newcommand{\\VersiBuku}{\K[^}]+' config/variables.tex || echo "0.4.0")
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "version=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Extracted Version: v${VERSION} (${SHORT_SHA})"
+
+      - name: Compile LaTeX Document
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main_buku.tex
+          latexmk_use_lualatex: false
+          latexmk_use_xelatex: false
+          args: "-pdf -interaction=nonstopmode -synctex=1"
+
+      - name: Verify PDF Exists
+        run: |
+          if [ -f "build/main_buku.pdf" ]; then
+            echo "PDF build output found at build/main_buku.pdf"
+            ls -lh build/main_buku.pdf
+          elif [ -f "main_buku.pdf" ]; then
+            echo "PDF build output found at main_buku.pdf, moving to build/"
+            mkdir -p build
+            cp main_buku.pdf build/main_buku.pdf
+          else
+            echo "Error: PDF not generated!"
+            exit 1
+          fi
+
+      - name: Upload GitHub Actions Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Buku-KP-${{ steps.get_version.outputs.version }}-b${{ github.run_number }}-${{ steps.get_version.outputs.short_sha }}
+          path: build/main_buku.pdf
+          retention-days: 30
+
+      - name: Setup Python
+        if: env.GDRIVE_CREDENTIALS_DATA != '' && env.GDRIVE_FOLDER_ID != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+        env:
+          GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+
+      - name: Install Google API Client
+        if: env.GDRIVE_CREDENTIALS_DATA != '' && env.GDRIVE_FOLDER_ID != ''
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-api-python-client google-auth
+        env:
+          GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+
+      - name: Upload to Google Drive
+        if: env.GDRIVE_CREDENTIALS_DATA != '' && env.GDRIVE_FOLDER_ID != ''
+        env:
+          GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          GDRIVE_ARCHIVE_FOLDER_ID: ${{ secrets.GDRIVE_ARCHIVE_FOLDER_ID }}
+          PDF_PATH: build/main_buku.pdf
+          VERSION_TAG: ${{ steps.get_version.outputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          GIT_SHA: ${{ steps.get_version.outputs.short_sha }}
+        run: |
+          python .github/scripts/upload_drive.py

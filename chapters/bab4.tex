@@ -464,12 +464,7 @@ Salah satu kelemahan mendasar jika model bahasa besar diminta menghasilkan tampi
 Penulis memecahkan permasalahan ini dengan merancang pola emisi komponen visual di luar jalur teks (\textit{Out-of-Band Widget Emission}):
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
   \item \textbf{Emisi Data Terstruktur Langsung ke Aliran SSE:} Saat suatu instrumen domain dieksekusi (misalnya \texttt{CompareTrafosTool}), instrumen tidak hanya mengembalikan teks ringkasan untuk model, melainkan juga mendaftarkan objek data visual ke layanan pengumpul widget (\texttt{IWidgetCollectorService}). Objek ini mencakup tipe widget \texttt{STAT\_CARDS}, \texttt{RANKING\_TABLE}, \texttt{COMPARISON\_TABLE}, \texttt{TREND\_CHART}, atau \texttt{ALERT}. Data visual ini diselipkan secara langsung ke dalam aliran SSE menuju peramban web tanpa membebani jendela token LLM.
-  \item \textbf{Pencegahan Penggandaan Komponen Visual (\textit{Widget Deduplication}):} Dalam siklus perulangan agen cerdas, model kerap memanggil instrumen yang sama secara berulang dengan parameter serupa sebelum menyusun jawaban akhir. Kondisi ini sebelumnya menimbulkan anomali di mana antarmuka pengguna menampilkan kartu grafik yang identik berkali-kali. Penulis mengimplementasikan logika deduplikasi pada \texttt{WidgetCollectorService}:
-  \begin{equation}
-    \text{isDup} = \exists w \in \mathcal{W} \ \big( w.\text{Tag} = \text{Tag}_{\text{norm}} \land w.\text{JSON} = \text{Serialize}(data) \big)
-    \label{eq:widget_dedup}
-  \end{equation}
-  Apabila komponen visual dengan tag dan muatan data identik telah berada di dalam antrean emisi, penambahan berikutnya diabaikan secara otomatis.
+  \item \textbf{Pencegahan Penggandaan Komponen Visual (\textit{Widget Deduplication}):} Dalam siklus perulangan agen cerdas, model kerap memanggil instrumen yang sama secara berulang dengan parameter serupa sebelum menyusun jawaban akhir. Kondisi ini sebelumnya menimbulkan anomali di mana antarmuka pengguna menampilkan kartu grafik yang identik berkali-kali. Penulis mengimplementasikan logika deduplikasi pada \texttt{WidgetCollectorService} dengan membandingkan kesamaan tag visual dan isi data JSON secara langsung. Apabila komponen visual dengan tag dan muatan data yang sama persis telah berada di dalam antrean emisi, penambahan berikutnya diabaikan secara otomatis.
 \end{enumerate}
 
 \subsubsection{Mitigasi Kebocoran Data dan Pembatasan Hak Akses Berlapis}

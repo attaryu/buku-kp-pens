@@ -959,7 +959,401 @@ Untuk mengisolasi visibilitas aset tersebut, antarmuka mengimplementasikan pola 
 \section{PROYEK NEDO AGENTIC PLATFORM}
 %============================================================
 
-\textit{[Bagian ini disiapkan untuk pembahasan mendalam mengenai perancangan dan implementasi platform otomatisasi alur kerja agen cerdas (agentic workflow), orkestrasi tugas multi-tahap, toleransi kesalahan, dan integrasi antar-layanan pada tahap berikutnya.]}
+Proyek \textit{Nedo Agentic Platform} merupakan proyek riset dan rekayasa internal strategis di PT Sinergi Dimensi Informatika (SINDIKA) yang bertujuan untuk merancang serta mengimplementasikan platform otomatisasi alur kerja agen cerdas mandiri (\textit{autonomous agentic workflow}). Berbeda dari antarmuka percakapan kecerdasan buatan konvensional (\textit{single-turn chat interface}) yang bersifat reaktif dan membutuhkan arahan pengguna di setiap giliran, platform ini dirancang untuk mengotomasi alur kerja komputasi dan rekayasa multi-tahap yang kompleks secara otonom. Melalui platform ini, agen-agen cerdas dapat berkolaborasi, menyelesaikan masalah secara mandiri, dan menghasilkan artefak kerja nyata (seperti dokumen analisis, laporan teknis, atau kode program) tanpa membutuhkan intervensi manual manusia di setiap langkah kecil.
+
+Dalam proyek ini, penulis bersama tim pengembang merancang dan membangun ekosistem platform secara terpadu, yang mencakup arsitektur mesin eksekusi agen mandiri (\textit{In-House ReAct Runner Engine}), mekanisme transaksi sewa tugas terdistribusi pada basis data (\textit{Transactional Job Leasing}), arsitektur perkakas empat tingkat (\textit{4-Tier Tooling Taxonomy}) berbasis protokol FastMCP, gerbang model bahasa terpadu (\textit{Nedo LLM Gateway}), tata kelola ruang kerja portabel berbasis penyimpanan objek MinIO, serta antarmuka operasional pengguna modern berbasis \textit{Single Page Application} (SPA).
+
+%------------------------------------------------------------
+\subsection{Gambaran Umum, Kebutuhan Platform, dan Topologi Ekosistem}
+%------------------------------------------------------------
+
+Perancangan platform agen cerdas industri menghadapi tantangan teknis mendasar pada aspek keandalan operasional, latensi komputasi, keamanan eksekusi perintah, dan determinisme alur penyelesaian tugas. Model bahasa skala besar (\textit{Large Language Models} / LLM) secara inheren memiliki sifat stokastik (\textit{stochastic non-determinism}) yang rentan mengalami perulangan tanpa henti (\textit{infinite execution loops}), kebingungan kognitif terhadap kepemilikan alat (\textit{tool selection paralysis}), atau kegagalan sintaksis saat memanggil perkakas eksternal. Oleh karena itu, platform memerlukan fondasi arsitektur terdistribusi yang kokoh dengan batasan keamanan (\textit{guardrails}) yang terukur.
+
+\subsubsection{Analisis Kebutuhan Sistem}
+Berdasarkan hasil analisis kebutuhan dan evaluasi operasional sistem automasi industri, platform \textit{Nedo Agentic Platform} dirancang untuk memenuhi lima pilar kebutuhan fungsional utama:
+\begin{enumerate}[label=\alph*.]
+  \item \textbf{Otonomi Siklus ReAct (\textit{Reasoning and Acting}):} Sistem harus mampu mengeksekusi siklus penalaran dan tindakan secara berulang secara asinkron tanpa pemblokiran antarmuka, mengevaluasi observasi lingkungan, dan mengadaptasi rencana penyelesaian tugas secara cerdas.
+  \item \textbf{Isolasi Eksekusi Kode Dinamis (\textit{Ephemeral Sandboxing}):} Eksekusi kode pemrograman dan perintah antarmuka baris perintah (\textit{Command Line Interface} / CLI) dari agen harus berjalan di dalam lingkungan terisolasi yang aman dengan pembatasan jaringan, memori, dan waktu guna memitigasi risiko keamanan sistem induk.
+  \item \textbf{Orkestrasi Alur Kerja Multi-Agen (\textit{DAG-Based Multi-Agent Workflow}):} Platform harus mendukung dekomposisi tugas kompleks ke dalam graf berarah tanpa siklus (\textit{Directed Acyclic Graph} / DAG), memungkinkan kolaborasi antar-agen dengan spesialisasi peran berbeda secara paralel maupun sekuensial.
+  \item \textbf{Akuntansi Biaya dan Kuota Token Waktu Nyata (\textit{Real-Time Token Metering}):} Setiap langkah inferensi model bahasa dan eksekusi instrumen harus dicatat secara atomik ke dalam buku besar (\textit{ledger}) basis data untuk pemantauan kuota, transparansi biaya komputasi, dan audit operasional per ruang kerja.
+  \item \textbf{Pengawasan Manusia dalam Lingkar Kendali (\textit{Human-in-the-Loop} / HITL):} Platform wajib menyediakan mekanisme interupsi terstruktur ketika agen membutuhkan klarifikasi spesifikasi atau meminta otorisasi persetujuan dari operator manusia sebelum mengeksekusi tindakan berisiko tinggi.
+\end{enumerate}
+
+\subsubsection{Topologi Arsitektur Ekosistem Layanan}
+Untuk mengakomodasi kebutuhan komputasi multi-layanan yang heterogen dan menjamin isolasi skalabilitas horizontal, ekosistem \textit{Nedo Agentic Platform} disusun ke dalam arsitektur terdistribusi berbasis kontainerisasi terpadu (\textit{Docker Compose}). Topologi sistem terdiri atas beberapa klaster layanan mandiri yang saling berinteraksi melalui jaringan privat terisolasi, sebagaimana dimodelkan pada Gambar~\ref{fig:nedo_system_topology}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{assets/gambar/nedo/arsitektur_nedo_4_tier.png}
+  \caption{Topologi Arsitektur Ekosistem Terdistribusi Nedo Agentic Platform}
+  \label{fig:nedo_system_topology}
+\end{figure}
+
+Layanan-layanan utama dalam topologi ekosistem tersebut meliputi:
+\begin{itemize}
+  \item \textbf{Frontend Application:} Aplikasi klien berbasis web yang dibangun dengan React 19 dan Vite, menyajikan antarmuka pemantauan alur kerja agen secara \textit{real-time} melalui aliran data \textit{Server-Sent Events} (SSE) serta lingkungan kantor virtual spasial berbasis Three.js.
+  \item \textbf{Backend Core \& Nedo LLM Gateway:} Layanan utama berbasis Flask yang menyediakan titik akhir REST API untuk manajemen entitas ruang kerja, rekrutmen agen, dan orkestrasi alur kerja Celery. Di dalam subsistem backend ini, modul \textbf{Nedo LLM Gateway} telah hadir sejak tahap awal arsitektur platform sebagai gerbang proksi tunggal untuk integrasi seluruh penyedia model bahasa (OpenAI, Anthropic, Google Gemini). Gerbang ini menangani pencatatan kuota token secara terpusat, resolusi alias model sesuai tingkat kapabilitas agen, serta derivasi kunci API berbasis hak akses ruang kerja secara konsisten baik pada fase pengembangan maupun produksi.
+  \item \textbf{Runner Daemon (\texttt{nedo.runner}):} Layanan latar belakang independen yang menjalankan mesin komputasi agen mandiri (\textit{In-House ReAct Loop Engine}). Runner ini secara aktif melakukan penarikan tugas dari antrean basis data melalui transaksi sewa aman, mengoordinasikan interaksi alat, dan mengirimkan telemetri eksekusi.
+  \item \textbf{Platform Remote FastMCP Services:} Klaster layanan mikro mandiri berbasis protokol \textit{Model Context Protocol} (FastMCP) yang berjalan di lingkungan kontainer terpisah, mencakup peramban bertenaga mesin Camoufox untuk otomasi peramban anti-deteksi, modul ekstraksi web adaptif berketahanan tinggi, serta kontainer pengujian keamanan terotorisasi.
+  \item \textbf{Penyimpanan Data Terdistribusi:} PostgreSQL sebagai penyimpan status transaksional utama dan buku besar klaim tugas, Redis sebagai perantara antrean pesan Celery dan basis data tembolok (\textit{cache}), serta MinIO S3 Object Storage untuk persistensi berkas artefak dan arsip snapshot ruang kerja terdistribusi.
+\end{itemize}
+
+%------------------------------------------------------------
+\subsection{Evolusi Arsitektur Runtime: Dari Purwarupa Eksploratif ke Native ReAct Loop}
+%------------------------------------------------------------
+
+Salah satu tonggak rekayasa terpenting dalam pengembangan platform ini adalah evolusi arsitektur mesin eksekusi agen (\textit{Agent Runtime Engine}). Evolusi ini mencerminkan metodologi rekayasa perangkat lunak iteratif yang berakar dari riset internal perusahaan guna mencapai keseimbangan optimal antara kecepatan pengujian konsep dan efisiensi performa produksi industri.
+
+\subsubsection{Fase Purwarupa Cepat (\textit{Rapid Prototyping \& Concept Validation})}
+Pada tahap inisiasi riset internal, tim pengembang memanfaatkan kerangka kerja sumber terbuka \textit{Hermes Agent} sebagai basis purwarupa awal untuk memvalidasi kelayakan konsep eksekusi alur kerja otonom. Hermes Agent dipilih karena memiliki sejumlah keunggulan yang sangat mendukung fase eksplorasi awal:
+\begin{enumerate}[label=\alph*.]
+  \item \textbf{Dukungan Komunitas dan Ekosistem yang Luas:} Memiliki dokumentasi yang matang dan basis pengguna aktif yang mempermudah adaptasi awal.
+  \item \textbf{Konektivitas Model Bahasa Bawaan:} Mendukung integrasi ke berbagai penyedia model bahasa komersial maupun model lokal secara langsung tanpa perlu membuat lapisan adaptor konektor baru.
+  \item \textbf{Kekayaan Perkakas Bawaan (\textit{Out-of-the-Box Tools}):} Menyediakan perkakas esensial seperti eksekusi terminal, manipulasi berkas, dan penelusuran web yang siap pakai sejak awal.
+  \item \textbf{Siklus Hidup Berbasis Putaran (\textit{Runs-Based Lifecycle}):} Mengusung paradigma eksekusi berbasis putaran tugas alih-alih percakapan teks biasa, memfasilitasi pengujian alur agen secara cepat bersama gerbang perantara \textit{Nedo LLM Gateway} yang telah ada sejak era ini.
+\end{enumerate}
+
+Namun, seiring dengan meningkatnya kebutuhan platform untuk melayani banyak pengguna secara konkuren (\textit{multi-tenancy}) dan tuntutan keandalan di tingkat industri, hasil evaluasi teknis mengidentifikasi beberapa kelemahan arsitektural yang mendasar:
+\begin{enumerate}[label=\alph*.]
+  \item \textbf{Banyaknya Lompatan Jaringan (\textit{Connection Hops}):} Alur komunikasi inferensi harus melalui rantai jaringan bertingkat yang panjang, dimulai dari Runner menuju layanan Hermes, kemudian dari Hermes ke Nedo LLM Gateway, hingga akhirnya dari Gateway ke penyedia model bahasa di awan. Rantai lompatan ini melipatgandakan latensi jaringan dan memperbanyak titik rawan kegagalan (\textit{points of failure}).
+  \item \textbf{Kompleksitas Pemantauan dan Aliran Eksekusi via \textit{Runs API}:} Untuk memantau jalannya tugas agen, Runner harus memicu penugasan (\textit{dispatch runs}), lalu membuka koneksi transmisi data terpisah (SSE) ke Hermes untuk menyadap alur eksekusi penalaran.
+  \item \textbf{Interaksi Human-in-the-Loop yang Berbelit:} Ketika agen memerlukan interupsi pengawasan manusia (seperti konfirmasi persetujuan atau klarifikasi instruksi), Runner harus menembak berbagai titik akhir HTTP terpisah pada Hermes secara manual untuk operasi penundaan (\textit{stop}), persetujuan (\textit{approval}), maupun klarifikasi (\textit{clarify}).
+  \item \textbf{Beban Pembersihan Sesi (\textit{Session Cleanup}):} Setiap kali sebuah tugas selesai dieksekusi, Runner wajib mengirimkan perintah pembersihan sesi secara manual guna mencegah terjadinya kebocoran memori pada kontainer Hermes.
+  \item \textbf{Ketidakcocokan Filosofi Desain (\textit{Design Mismatch}):} Hermes pada hakikatnya dirancang untuk lingkungan asisten personal pengguna tunggal (\textit{single-user personal agent}), bukan untuk sistem terdistribusi multi-tenant yang membutuhkan skalabilitas horizontal dan isolasi tugas independen. Di samping itu, ukuran citra kontainer Hermes yang membengkak hingga 3,9 GB menimbulkan jeda waktu inisialisasi agen (\textit{provisioning delay}) berkisar 9--10 detik serta batasan artifisial 10 konkurensi tugas.
+\end{enumerate}
+
+\subsubsection{Fase Optimalisasi Mandiri (\textit{In-House Specialization})}
+Menyadari keterbatasan tersebut, penulis bersama tim memutuskan untuk mengalihkan sistem ke mesin eksekusi mandiri, yaitu \textbf{In-House Native ReAct Engine} (\texttt{nedo.runner.engine}). Mesin ini dibangun secara murni menggunakan pustaka standar asinkron Python (\texttt{asyncio}) di dalam ruang proses internal Runner tanpa perantara runtime eksternal.
+
+Desain arsitektur mandiri ini secara langsung menyelesaikan seluruh kelemahan mendasar yang dihadapi pada era purwarupa Hermes:
+\begin{enumerate}[label=\alph*.]
+  \item \textbf{Penyederhanaan Rantai Jaringan (\textit{Single-Hop Connection}):} Mesin ReAct berjalan langsung di dalam ruang proses Python Runner (\textit{in-process loop}). Dengan mengeliminasi kontainer perantara Hermes, Runner dapat berkomunikasi langsung ke Nedo LLM Gateway dalam satu lompatan jaringan ($\text{Runner Engine} \rightarrow \text{Nedo LLM Gateway} \rightarrow \text{Penyedia LLM}$), memangkas latensi inferensi dan menghapus titik rawan kegagalan komunikasi antar-layanan.
+  \item \textbf{Pancaran Telemetri Asinkron Waktu Nyata (\textit{In-Process Event Dispatcher}):} Kebutuhan menyadap aliran data melalui koneksi SSE terpisah ke antarmuka eksternal dihilangkan sepenuhnya. Mesin ReAct mandiri memanfaatkan modul \texttt{EventDispatcher} berbasis pola \textit{Pub/Sub} internal. Setiap monolog penalaran (\textit{thought steps}), pemanggilan alat, dan hasil observasi langsung dipancarkan secara terintegrasi ke Redis Stream dan kanal SSE backend untuk diteruskan seketika ke antarmuka pengguna.
+  \item \textbf{Penanganan Otorisasi Manusia yang Luwes (\textit{Native Control Signals}):} Interupsi \textit{Human-in-the-Loop} (HITL) tidak lagi memerlukan pemanggilan manual ke berbagai titik akhir HTTP penundaan, persetujuan, atau klarifikasi. Ketika perkakas \texttt{ask\_requester} dipanggil, mesin secara alami membangkitkan sinyal kontrol Python terstruktur (\texttt{WaitingForRequester}), membekukan status giliran secara atomik ke basis data PostgreSQL, dan melanjutkan alur seketika setelah operator memberikan respons.
+  \item \textbf{Manajemen Siklus Hidup Memori Otomatis:} Beban pembersihan sesi manual ditiadakan sepenuhnya. Status percakapan agen dikelola sebagai objek Python murni (\texttt{ConversationState}). Begitu pekerjaan selesai atau diserahkan, seluruh alokasi memori runtime otomatis dibersihkan oleh \textit{Garbage Collector} Python tanpa meninggalkan jejak sesi usang pada peladen.
+  \item \textbf{Skalabilitas Multi-Tenant dan Kedaulatan Kode:} Batasan artifisial 10 konkurensi bawaan Hermes dieliminasi total. Proses runner bersifat nir-status (\textit{stateless}) dan dapat diskalakan horizontal secara independen mengikuti ketersediaan inti CPU dan RAM server. Ukuran citra kontainer terpangkas dari 3,9 GB menjadi di bawah 250 MB (penurunan lebih dari 93\%), dan waktu penyiapan agen tereliminasi menjadi 0 ms (instan).
+  \item \textbf{Kedekatan Akses Transaksional Basis Data (\textit{Database Intimacy}):} Mesin mandiri terintegrasi langsung dengan transaksi basis data PostgreSQL, memungkinkan penerapan mekanisme sewa tugas atomik dan pencatatan telemetri secara terpadu tanpa perantara lapisan jaringan tambahan.
+\end{enumerate}
+
+\textbf{Konsekuensi dan \textit{Trade-Off} Rekayasa:} Keputusan membangun mesin ReAct mandiri memiliki konsekuensi praktis yang harus diantisipasi. Dengan menanggalkan ketergantungan pada runtime pihak ketiga, seluruh tanggung jawab pemeliharaan sistem (\textit{maintenance burden}), perbaikan kutu (\textit{bug fixes}), penanganan perubahan antarmuka API penyedia model bahasa (\textit{breaking changes}), hingga penambahan kapabilitas perkakas baru harus diemban sepenuhnya oleh tim pengembang internal perusahaan, tanpa dapat mengandalkan pembaruan otomatis dari komunitas sumber terbuka.
+
+\subsubsection{Kajian Evaluasi terhadap Kerangka Kerja Eksternal (LangChain)}
+Dalam studi riset komparatif internal, tim pengembang juga mengevaluasi opsi pemanfaatan kerangka kerja populer seperti \textit{LangChain} sebagai pembungkus lingkar ReAct. Hasil kajian menunjukkan bahwa LangChain kurang tepat diimplementasikan sebagai mesin inti agen berkinerja tinggi karena beberapa faktor:
+\begin{enumerate}[label=\alph*.]
+  \item \textbf{Abstraksi yang Terlalu Tebal (\textit{Leaky Abstractions}):} LangChain membungkus pemanggilan model bahasa dalam lapisan kelas yang sangat tebal, menyulitkan tim untuk melakukan intersepsi kendali tingkat rendah, seperti pembatalan tugas asinkron (\textit{cancellation tokens}) dan penyadapan galat jaringan sementara secara transparan.
+  \item \textbf{Orientasi Rantai Sekuensial Linear:} Pola dasar LangChain awalnya dioptimasi untuk rantai tugas sekuensial linear, sehingga kurang fleksibel dalam mengelola siklus hidup perulangan ReAct dinamis yang memerlukan manipulasi status memori percakapan secara presisi pada setiap langkah inferensi.
+  \item \textbf{Pemborosan Kuota Token (\textit{Prompt Overhead}):} LangChain menyuntikkan banyak instruksi sistem pembungkus bawaan (\textit{default prompt wrappers}) yang memperbesar konsumsi token pada setiap putaran penalaran.
+  \item \textbf{Ketiadaan Dukungan Transaksi Basis Data Asli:} LangChain tidak menyediakan primitif penguncian baris transaksional basis data tingkat rendah yang dibutuhkan untuk konkurensi sewa tugas multi-runner.
+\end{enumerate}
+
+\subsubsection{Pacing Kognitif Dinamis dan Jaminan Terminasi Deterministik}
+Untuk mencegah model bahasa terjebak dalam perulangan eksplorasi tanpa batas atau mengalami kegagalan semu akibat kehabisan kuota putaran, sistem menerapkan mekanisme \textbf{Adaptive Cognitive Pacing}. Mekanisme ini mengalokasikan siklus penalaran agen ke dalam tiga fase proporsional berdasarkan batas maksimal putaran (\textit{Dynamic Turn Limit}) yang dapat dikonfigurasi pengguna:
+\begin{itemize}
+  \item \textbf{Fase Awal (25\% Pertama):} \textit{Discovery \& Planning}. Agen diarahkan untuk menelaah instruksi, memahami batasan tugas, dan menyusun strategi penyelesaian.
+  \item \textbf{Fase Tengah (50\% Berikutnya):} \textit{Core Execution}. Agen memanggil perkakas komputasi secara intensif untuk mengeksekusi instruksi dan mengolah data.
+  \item \textbf{Fase Akhir (25\% Terakhir):} \textit{Verification \& Wrap-up}. Agen diinstruksikan untuk memvalidasi solusi, merangkum hasil kerja, dan membekukan perubahan.
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{assets/gambar/nedo/alur_react_loop_runner.png}
+  \caption{Alur Siklus Hidup Native ReAct Loop Engine dengan Pacing dan Grace Turn}
+  \label{fig:nedo_react_lifecycle}
+\end{figure}
+
+Siklus eksekusi pada Gambar~\ref{fig:nedo_react_lifecycle} dilengkapi dengan tiga perlindungan terminasi deterministik:
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{Penyaringan Alat Finisher (\textit{Active Tool Whitelisting}):} Pada fase \textit{Wrap-up} saat mendekati batas putaran akhir, mesin secara otomatis menyembunyikan perkakas manipulasi data dan terminal. Daftar perkakas dipersempit secara ketat hanya pada perkakas penyelesaian tugas (\textit{finisher tools}), yaitu penyerahan hasil (\texttt{submit\_result}) atau pelaporan kendala buntu (\texttt{report\_blocker}). Hal ini mencegah model membuang giliran untuk tindakan eksplorasi baru yang tidak sempat diselesaikan.
+  \item \textbf{Giliran Darurat (\textit{Emergency Grace Turn}):} Apabila putaran reguler telah habis namun agen belum sempat menyerahkan luaran kerja, sistem Runner secara otomatis memberikan satu kali giliran darurat tambahan. Instruksi sistem disuntikkan secara tegas agar agen segera merangkum hasil kerja yang telah dicapai, sehingga luaran kerja tidak hangus (\textit{anti-false-failure}).
+  \item \textbf{Protokol Akselerasi (\textit{Fast-Forward Pacing Protocol}):} Untuk tugas-tugas yang sederhana, instruksi awal disuntikkan petunjuk ringkas yang mendorong agen langsung menuntaskan tugas dalam satu putaran jika informasi yang tersedia sudah mencukupi, mencegah putaran perantara yang boros biaya komputasi.
+\end{enumerate}
+
+%------------------------------------------------------------
+\subsection{Manajemen Status Terdistribusi, Transaksi Sewa Tugas, dan Akuntansi Biaya}
+%------------------------------------------------------------
+
+Dalam lingkungan komputasi terdistribusi dengan banyak proses runner yang berjalan bersamaan (\textit{concurrent runners}), manajemen penugasan pekerjaan harus dirancang bebas dari tabrakan status (\textit{race condition}) dan duplikasi eksekusi.
+
+\subsubsection{Justifikasi Antrean Tabel Basis Data Relasional}
+Sistem penugasan agen pada platform ini secara sengaja menggunakan antrean berbasis tabel basis data PostgreSQL (\textit{in-database queue}) yang dipadukan dengan sinyal pembangun Redis (\textit{wakeup signals}), alih-alih mengandalkan antrean pesan murni pada Redis (seperti Celery queue atau Redis Streams). Terdapat tiga pertimbangan rekayasa mendasar di balik keputusan arsitektur ini:
+\begin{enumerate}[label=\alph*.]
+  \item \textbf{Menghindari Masalah Penulisan Ganda (\textit{Dual-Write Problem}):} Ketika tugas dibuat, sistem wajib mendaftarkan pekerjaan, mencadangkan kuota token pada buku besar keuangan (\textit{token reservation}), dan menerapkan batas kuota per agen. Jika pekerjaan ditulis ke basis data sementara antreannya dikirimkan ke broker pesan secara terpisah, kegagalan jaringan di antara keduanya akan merusak konsistensi data. Melalui antrean tabel PostgreSQL, pendaftaran tugas dan pencadangan kuota token terjadi dalam \textbf{satu transaksi basis data ACID yang atomik}. Redis murni difungsikan sebagai sinyal pembangun (\textit{wake-up hint}) yang tidak menyimpan status kritis.
+  \item \textbf{Kriteria Klaim Relasional Multi-Entitas yang Kompleks:} Antrean FIFO konvensional pada broker pesan bersifat buta (\textit{blind}), di mana pesan terdepan langsung ditarik oleh pekerja berikutnya. Pada Nedo Agentic Platform, suatu tugas hanya sah diambil jika memenuhi aturan bisnis multi-tabel secara serentak: satu agen hanya boleh menjalankan satu tugas aktif dalam satu waktu, agen tidak dalam kondisi dibekukan (\textit{frozen}), meja atau kantor agen berstatus aktif, dan jumlah tugas konkuren di ruang kerja belum melampaui kuota paket langganan. Mengevaluasi kriteria multi-tabel ini di broker pesan sangat rentan tabrakan data, sementara di PostgreSQL seluruh kondisi tersebut dapat diperiksa secara atomik dalam satu kueri relasional.
+  \item \textbf{Mengatasi Masalah \textit{Visibility Timeout} pada Tugas AI:} Broker pesan tradisional mengandalkan batas waktu keterlihatan (\textit{visibility timeout}). Jika inferensi model bahasa memakan waktu lama melebihi ambang batas, broker akan menganggap pekerja telah mati dan melempar pesan yang sama ke runner lain sehingga memicu eksekusi ganda (\textit{duplicate run}). Pendekatan sewa transaksional dan detak jantung (\textit{Lease \& Heartbeat}) di PostgreSQL menjamin kepemilikan tugas secara deterministik tanpa risiko eksekusi ganda.
+\end{enumerate}
+
+\subsubsection{Klaim Sewa Tugas Transaksional (\textit{Transactional Job Leasing})}
+Pemberian hak eksekusi tugas kepada runner diatur melalui mekanisme klaim atomik memanfaatkan klausa \texttt{FOR UPDATE SKIP LOCKED} pada PostgreSQL. Mekanisme ini bekerja melalui tahapan:
+\begin{enumerate}[label=\arabic*.]
+  \item Runner mencari pekerjaan tertua yang berada dalam status siap dieksekusi (\textit{queued}) dan telah melewati waktu tunda (\textit{not-before timestamp}).
+  \item Klausa \texttt{FOR UPDATE SKIP LOCKED} mengunci baris pekerjaan tersebut secara eksklusif dalam satu transaksi tanpa memblokir runner lain. Runner lain yang mengeksekusi kueri serupa secara otomatis melompati baris yang sedang terkunci dan mengambil pekerjaan berikutnya secara nir-blokir (\textit{non-blocking concurrency}).
+  \item Runner mengambil kunci transaksi \textit{advisory} tingkat ruang kerja (\texttt{pg\_advisory\_xact\_lock}) guna memvalidasi bahwa jumlah tugas aktif belum melampaui batas paket langganan.
+  \item Runner secara atomik memperbarui status pekerjaan menjadi \textit{running}, mencatat identitas unik runner, menaikkan nilai generasi klaim (\textit{claim epoch fence}), dan menetapkan waktu kedaluwarsa hak sewa (\textit{lease expiration}).
+\end{enumerate}
+Penambahan nomor generasi klaim bertindak sebagai \textit{fencing token} yang memastikan bahwa setiap operasi pembaruan berikutnya dari runner akan ditolak secara otomatis oleh basis data jika masa sewa telah kedaluwarsa atau telah diambil alih oleh runner lain.
+
+\subsubsection{Deteksi Kegagalan Otomatis dan Heartbeat Thread}
+Untuk mendeteksi kegagalan sistem pada tingkat node komputasi atau \textit{runner crash}, runner menginisiasi utas latar belakang independen (\textit{heartbeat thread}) dengan siklus periodik 15 detik. Utas ini secara berkala mengeksekusi transaksi singkat ke basis data untuk memperpanjang stempel waktu kedaluwarsa sewa selama 45 detik ke depan.
+
+Kueri pembaruan detak jantung ini sekaligus memantau apakah ada permintaan pembatalan dari pengguna (\textit{cancel requested}). Jika basis data mengembalikan nol baris pada saat perpanjangan sewa, sistem menyimpulkan bahwa hak sewa telah dibatalkan atau tugas telah berpindah tangan, sehingga runner segera menghentikan proses ReAct secara bersih. Sebaliknya, apabila proses runner mati mendadak, waktu kedaluwarsa sewa akan terlampaui sehingga tugas yang menggantung secara otomatis dapat diklaim kembali oleh runner lain yang sehat (\textit{automatic failover}).
+
+\subsubsection{Akuntansi Biaya dan Pelacakan Millitoken Waktu Nyata}
+Pencatatan konsumsi sumber daya komputasi diimplementasikan secara atomik melalui modul pelacakan langkah kerja. Setiap pemanggilan perkakas membuka siklus transaksi langkah saat sinyal awal pemanggilan diterima, dan menutup transaksi ketika hasil observasi telah diperoleh.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{0.88\textwidth}{!}{%
+  \begin{tikzpicture}[
+    >=Stealth,
+    font=\sffamily,
+    seq_box/.style={rectangle, rounded corners=3pt, draw=black!75, fill=gray!10, thick, minimum width=2.4cm, minimum height=0.7cm, align=center, font=\scriptsize\bfseries},
+    db_box/.style={cylinder, shape border rotate=90, draw=purple!80!black, fill=purple!10, thick, minimum width=2.0cm, minimum height=0.9cm, align=center, font=\scriptsize\bfseries},
+    event_line/.style={draw=black!75, thick, ->},
+    sql_line/.style={draw=purple!80!black, thick, dashed, ->}
+  ]
+    % Entities
+    \node[seq_box] (runner_t) at (0, 0) {Runner Loop};
+    \node[seq_box] (tool_t) at (3.8, 0) {Tool Execution};
+    \node[seq_box] (steps_t) at (7.6, 0) {ToolSteps};
+    \node[db_box] (db_t) at (11.2, 0) {PostgreSQL\\Tabel Langkah};
+
+    % Life lines
+    \draw[thick, black!40] (0, -0.5) -- (0, -5.2);
+    \draw[thick, black!40] (3.8, -0.5) -- (3.8, -5.2);
+    \draw[thick, black!40] (7.6, -0.5) -- (7.6, -5.2);
+    \draw[thick, black!40] (11.2, -0.5) -- (11.2, -5.2);
+
+    % Events
+    \draw[event_line] (0, -1.0) -- node[above, font=\tiny] {1. Panggil Perkakas} (3.8, -1.0);
+    \draw[event_line] (3.8, -1.5) -- node[above, font=\tiny] {2. Sinyal \texttt{tool.started}} (7.6, -1.5);
+    \draw[sql_line] (7.6, -2.0) -- node[above, font=\tiny] {3. Buka Langkah Transaksi} (11.2, -2.0);
+
+    \node[draw=orange!80!black, fill=orange!10, rounded corners=2pt, font=\tiny, align=center] at (3.8, -2.8) {Eksekusi Perintah\\Sandbox / FastMCP};
+
+    \draw[event_line] (3.8, -3.5) -- node[above, font=\tiny] {4. Sinyal \texttt{tool.completed}} (7.6, -3.5);
+    \draw[sql_line] (7.6, -4.1) -- node[above, font=\tiny, align=center] {5. Tutup Langkah Transaksi\\Catat Biaya Millitoken} (11.2, -4.1);
+    \draw[event_line] (7.6, -4.7) -- node[above, font=\tiny] {6. Hasil Observasi \& Biaya} (0, -4.7);
+  \end{tikzpicture}
+  }
+  \caption{Diagram Sekuensial Pencatatan Atomik Telemetri Perkakas dan Akuntansi Biaya}
+  \label{fig:tool_steps_sequence}
+\end{figure}
+
+Sebagaimana diilustrasikan pada Gambar~\ref{fig:tool_steps_sequence}, biaya penggunaan perkakas dibebankan secara presisi dalam satuan \textit{millitokens} ($1/1000$ token) yang terdaftar pada katalog perkakas. Apabila proses eksekusi terputus di tengah jalan, seluruh langkah yang masih menggantung akan ditutup secara otomatis dengan status gagal atau ditolak, mencegah terjadinya ketidaksesuaian pembukuan biaya komputasi.
+
+%------------------------------------------------------------
+\subsection{Rancang Bangun Taksonomi Tooling 4-Tier dan Arsitektur Remote FastMCP}
+%------------------------------------------------------------
+
+Kemampuan agen dalam memecahkan masalah rekayasa sangat ditentukan oleh variasi dan keandalan perkakas (\textit{tools}) yang dimilikinya. Namun, memberikan wewenang eksekusi bebas pada sistem agen tanpa isolasi yang ketat dapat membuka vektor serangan keamanan kritis, seperti kebocoran data sensitif atau eksekusi perintah berbahaya.
+
+\subsubsection{Taksonomi Tooling 4-Tier}
+Guna mengatasi ancaman tersebut, platform menerapkan sistem keamanan dan isolasi perkakas berbasis \textbf{Taksonomi Tooling 4-Tier}, yang membagi hak istimewa instrumen ke dalam empat lapisan bergradasi:
+
+\begin{figure}[H]
+  \centering
+  \resizebox{0.95\textwidth}{!}{%
+  \begin{tikzpicture}[
+    >=Stealth,
+    font=\sffamily,
+    tier1_box/.style={rectangle, rounded corners=4pt, draw=green!70!black, fill=green!10, very thick, minimum width=11.5cm, minimum height=1.1cm, align=left, font=\scriptsize},
+    tier2_box/.style={rectangle, rounded corners=4pt, draw=blue!70!black, fill=blue!10, very thick, minimum width=11.5cm, minimum height=1.1cm, align=left, font=\scriptsize},
+    tier3_box/.style={rectangle, rounded corners=4pt, draw=orange!80!black, fill=orange!10, very thick, minimum width=11.5cm, minimum height=1.2cm, align=left, font=\scriptsize},
+    tier4_box/.style={rectangle, rounded corners=4pt, draw=red!70!black, fill=red!10, very thick, minimum width=11.5cm, minimum height=1.1cm, align=left, font=\scriptsize}
+  ]
+    % Tier 1
+    \node[tier1_box] (t1) at (0, 3.6) {
+      \textbf{Tier 1: In-Process Native Domain Tools} [Ruang Memori Internal Runner]\\
+      \tiny $\bullet$ Manipulasi berkas lokal (\texttt{read\_file}, \texttt{write\_file}, \texttt{list\_dir}, \texttt{grep}) dengan pembatasan direktori kerja (\textit{path sandboxing}).\\
+      \tiny $\bullet$ Koordinasi alur kerja (\texttt{submit\_result}, \texttt{report\_blocker}, \texttt{ask\_requester}) dan pemanggilan model visual (\texttt{vision\_analyze}).
+    };
+
+    % Tier 2
+    \node[tier2_box] (t2) at (0, 2.1) {
+      \textbf{Tier 2: Ephemeral Docker Sandbox} [Kontainer Terisolasi Sekali Pakai]\\
+      \tiny $\bullet$ Eksekusi skrip pemrograman dinamis (\texttt{code\_exec}) dan perintah baris (\texttt{terminal}).\\
+      \tiny $\bullet$ Parameter isolasi: tanpa jaringan (\texttt{--network none}), alokasi RAM maksimal 512 MB, batas waktu 60 detik, non-root user.
+    };
+
+    % Tier 3
+    \node[tier3_box] (t3) at (0, 0.45) {
+      \textbf{Tier 3: Platform Remote FastMCP Services} [Layanan Mikro Terkelola Lintas Kontainer]\\
+      \tiny $\bullet$ \textbf{nedo-browser-mcp:} Otomasi peramban anti-deteksi headless bertenaga Camoufox (\textit{anti-fingerprint bypass}).\\
+      \tiny $\bullet$ \textbf{nedo-web-extract-mcp:} Penarikan web adaptif berketahanan tinggi dengan perutean dinamis \& tembolok disk SQLite.\\
+      \tiny $\bullet$ \textbf{kali-mcp:} Eksekusi perkakas audit keamanan dan pengujian penetrasi dalam kontainer terisolasi.
+    };
+
+    % Tier 4
+    \node[tier4_box] (t4) at (0, -1.15) {
+      \textbf{Tier 4: External Workspace MCP Proxies} [Integrasi Layanan Pihak Ketiga Eksternal]\\
+      \tiny $\bullet$ Ekstensi integrasi server MCP khusus per ruang kerja pengguna (GitHub, GitLab, basis data eksternal).\\
+      \tiny $\bullet$ Diisolasi di balik konfigurasi templat per ruang kerja pengguna.
+    };
+  \end{tikzpicture}
+  }
+  \caption{Matriks Taksonomi Tooling 4-Tier Berdasarkan Tingkat Keamanan dan Lingkungan Eksekusi}
+  \label{fig:tooling_taxonomy}
+\end{figure}
+
+Karakteristik tiap lapisan pada Gambar~\ref{fig:tooling_taxonomy} dijabarkan sebagai berikut:
+\begin{enumerate}[label=\alph*.]
+  \item \textbf{Tier 1 (In-Process Native Tools):} Berjalan langsung di dalam ruang proses Python runner tanpa beban latensi jaringan. Perkakas manipulasi berkas dilindungi dengan mekanisme sanitasi jalur direktori guna mencegah kerentanan penelusuran direktori (\textit{directory traversal attack}). Selain itu, perkakas analisis visual (\texttt{vision\_analyze}) dirancang asinkron dengan verifikasi \textit{magic bytes} biner dan penyaringan IP privat guna menangkal serangan \textit{Server-Side Request Forgery} (SSRF).
+  \item \textbf{Tier 2 (Ephemeral Docker Sandbox):} Digunakan khusus untuk mengeksekusi kode Python atau perintah terminal bash yang dihasilkan oleh LLM. Kontainer ini dibuat secara dinamis menggunakan Docker SDK, berjalan tanpa antarmuka jaringan luar, dibatasi kuota memori 512 MB, dan dibatasi waktu eksekusi maksimal 60 detik sebelum dihancurkan secara otomatis.
+  \item \textbf{Tier 3 (Platform Remote FastMCP):} Layanan mikro independen yang menyajikan fungsionalitas komputasi berat di luar proses runner melalui protokol standar \textit{Model Context Protocol} berbasis Streamable HTTP/SSE:
+    \begin{itemize}
+      \item \texttt{nedo-browser-mcp}: Mengemas peramban berbasis Firefox dengan proteksi anti-fingerprint (\textit{Camoufox}) guna menavigasi situs modern yang terproteksi bot. Layanan ini membatasi antrean konkurensi tab secara asinkron menggunakan semafor memori untuk mencegah lonjakan konsumsi RAM.
+      \item \texttt{nedo-web-extract-mcp}: Layanan ekstraksi konten berbasis FastMCP yang menggabungkan kemampuan penarikan awan (Firecrawl API), ekstraktor teks lokal nir-biaya (Trafilatura), dan sistem tembolok berkas dua tingkat berbasis SQLite (\textit{two-tier disk caching}) untuk efisiensi latensi dan biaya.
+      \item \texttt{kali-mcp}: Lingkungan audit keamanan berbasis kontainer Linux resmi yang menyediakan perkakas uji penetrasi terkurasi bagi agen bertipe analis keamanan.
+    \end{itemize}
+  \item \textbf{Tier 4 (External Workspace MCP):} Jalur proksi untuk menghubungkan repositori atau layanan luar milik pengguna akhir ke dalam konteks agen secara aman.
+\end{enumerate}
+
+\subsubsection{Pengamanan Jalur Transport MCP Loopback}
+Meskipun komunikasi antara runner dan layanan Tier 3 FastMCP berlangsung pada jaringan kontainer internal (\textit{loopback network}), jalur transmisi tersebut tetap memiliki potensi celah keamanan terhadap serangan \textit{DNS rebinding} atau injeksi perintah antar-kontainer. Untuk mengatasi ancaman tersebut, platform menerapkan mekanisme autentikasi statis berbasis \textbf{Bearer Token} pada lapisan middleware ASGI di seluruh layanan FastMCP internal.
+
+Setiap permintaan HTTP yang masuk ke titik akhir \texttt{/mcp} diperiksa header otorisasi tokennya. Jika token tidak sesuai dengan variabel rahasia lingkungan sistem, permintaan langsung ditolak dengan kode status \textit{401 Unauthorized}. Sementara itu, titik akhir pemeriksaan kesehatan (\texttt{/health}) diberikan pengecualian (\textit{bypass}) dari validasi token agar orkestrator kontainer dapat memantau status keaktifan layanan secara berkala tanpa hambatan otorisasi.
+
+%------------------------------------------------------------
+\subsection{Tata Kelola Artefak Hasil Kerja dan Ruang Kerja Terdistribusi}
+%------------------------------------------------------------
+
+Dalam alur kerja multi-agen berskala industri, luaran kerja tidak boleh sekadar berupa teks percakapan biasa, melainkan berkas artefak konkret (dokumen perancangan, laporan analisis, atau kode sumber) yang dapat diverifikasi dan diteruskan ke tahapan berikutnya.
+
+\subsubsection{Unified Deliverable Protocol (\texttt{submit\_result})}
+Pada perancangan awal, sistem menyediakan dua perkakas terpisah untuk menyerahkan tugas, yaitu satu perkakas untuk menyerahkan tugas ke agen lain dalam alur DAG dan satu perkakas untuk menyerahkan hasil akhir ke pengguna. Namun, hasil evaluasi empiris menunjukkan bahwa model bahasa sering mengalami kebingungan kognitif (\textit{decision paralysis}) dalam menentukan instrumen penyerahan yang tepat, yang berujung pada kegagalan alur kerja.
+
+Tim pengembang mengatasi kendala tersebut dengan menyatukan seluruh alur penyerahan ke dalam satu perkakas tunggal, yaitu \texttt{submit\_result}. Perkakas ini menerima struktur data terpadu:
+\begin{itemize}
+  \item \textbf{Ringkasan Hasil (\textit{Summary}):} Ringkasan eksekutif naratif mengenai pencapaian kerja yang berhasil diselesaikan oleh agen.
+  \item \textbf{Daftar Artefak (\textit{Deliverables}):} Senarai berkas luaran penting yang diserahkan dan diverifikasi keberadaannya di ruang kerja.
+  \item \textbf{Catatan Penerus (\textit{Notes for Next Agent}):} Catatan teknis kontekstual yang ditujukan khusus bagi agen penerima berikutnya dalam rantai alur kerja.
+\end{itemize}
+Dengan unifikasi ini, beban kognitif agen tereduksi secara signifikan karena agen hanya perlu berfokus pada satu jalur keberhasilan (\textit{single path to success}), baik saat bertindak sebagai agen perantara maupun agen penyelesai akhir.
+
+\subsubsection{Pembaruan di Tempat Berkas Hidup (\textit{Living File In-Place Upsert})}
+Pada skenario penyusunan laporan berulang, berkas-berkas penting seperti \texttt{README.md} kerap diperbarui secara bertahap oleh beberapa agen yang bekerja berurutan. Tanpa tata kelola yang baik, penyimpanan objek akan dipenuhi oleh berkas duplikat versi (\texttt{README\_v1.md}, \texttt{README\_v2.md}), yang membingungkan operator pada antarmuka pengguna.
+
+Platform menerapkan mekanisme \textit{Living File In-Place Upsert}. Ketika agen menyerahkan pembaruan berkas yang telah ada di basis data dengan nama yang sama, sistem melakukan pembaruan konten secara langsung di tempat (\textit{in-place overwrite}) pada objek MinIO S3 dan entri metadata basis data. Pendekatan ini mempertahankan satu representasi kartu berkas tunggal yang bersih pada antarmuka pengguna, sementara riwayat komputasinya tetap tercatat di buku besar langkah kerja.
+
+\subsubsection{Sinkronisasi Snapshot Ruang Kerja Terdistribusi via MinIO S3}
+Untuk memungkinkan alur kerja agen berpindah lintas mesin runner atau dieksekusi oleh kontainer yang berbeda, ruang kerja lokal pada direktori penugasan disinkronkan secara portabel ke penyimpanan objek MinIO pada ember (\textit{bucket}) khusus ruang kerja.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{0.90\textwidth}{!}{%
+  \begin{tikzpicture}[
+    >=Stealth,
+    font=\sffamily,
+    node_box/.style={rectangle, rounded corners=4pt, draw=blue!70!black, fill=blue!10, thick, minimum width=3.4cm, minimum height=1.1cm, align=center, font=\scriptsize\bfseries},
+    storage_box/.style={cylinder, shape border rotate=90, draw=purple!80!black, fill=purple!10, thick, minimum width=2.6cm, minimum height=1.3cm, align=center, font=\scriptsize\bfseries},
+    proc_box/.style={rectangle, rounded corners=3pt, draw=black!75, fill=gray!10, thick, minimum width=3.4cm, minimum height=0.8cm, align=center, font=\tiny},
+    sync_line/.style={draw=orange!90!black, very thick, ->},
+    dash_line/.style={draw=black!75, thick, dashed}
+  ]
+    % Nodes
+    \node[node_box] (runner1) at (-4.2, 2.0) {Runner Node A\\Agen Tahap Awal\\Direktori Kerja Lokal};
+    \node[storage_box] (minio_s3) at (0, 0) {MinIO S3 Bucket\\\texttt{workspaces/}\\Arsip Versi Snapshot\\Pointer Terkini};
+    \node[node_box] (runner2) at (4.2, 2.0) {Runner Node B\\Agen Tahap Lanjutan\\Direktori Kerja Lokal};
+
+    % Intermediate steps
+    \node[proc_box] (pack) at (-4.2, 0.4) {1. Filter Berkas Terlarang\\2. Pengemasan Tarball\\3. Proteksi Jalur Zip-Slip};
+    \node[proc_box] (unpack) at (4.2, 0.4) {1. Unduh Arsip Terkini\\2. Ekstraksi Aman\\3. Hidrasi Direktori Kerja};
+
+    % Connections
+    \draw[dash_line] (runner1) -- (pack);
+    \draw[sync_line] (pack) -- node[below, font=\tiny, align=center] {Snapshot\\Unggah .tar.gz} (minio_s3);
+    \draw[sync_line] (minio_s3) -- node[below, font=\tiny, align=center] {Hidrasi\\Unduh .tar.gz} (unpack);
+    \draw[dash_line] (unpack) -- (runner2);
+  \end{tikzpicture}
+  }
+  \caption{Alur Pengemasan Snapshot dan Sinkronisasi Ruang Kerja Terdistribusi via MinIO S3}
+  \label{fig:workspace_sync_flow}
+\end{figure}
+
+Alur sinkronisasi pada Gambar~\ref{fig:workspace_sync_flow} mencakup tiga tahapan perlindungan:
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{Penyaringan Berkas Sampah (\textit{Hardcoded Excludes}):} Saat mengompresi ruang kerja menjadi arsip \texttt{.tar.gz}, sistem secara otomatis mengabaikan berkas direktori biner dan tembolok berat seperti \texttt{.git}, \texttt{node\_modules}, \texttt{\_\_pycache\_\_}, dan lingkungan virtual Python.
+  \item \textbf{Pencegahan Serangan Penetrasi Arsip (\textit{Zip-Slip Protection}):} Saat proses hidrasi atau ekstraksi arsip tarball pada node penerima, sistem memverifikasi setiap entri berkas guna memastikan tidak ada berkas yang diekstraksi di luar batas direktori kerja aman target.
+  \item \textbf{Penegakan Single-Writer Guardrail pada DAG:} Pada tahap validasi pembentukan alur tugas multi-agen, validator graf tugas memastikan bahwa tidak ada dua agen konkuren yang memiliki izin menulis (\textit{write permission}) pada direktori kerja berkas yang sama secara bersamaan, sehingga mencegah terjadinya konflik penimpaan berkas (\textit{concurrent write collision}).
+\end{enumerate}
+
+%------------------------------------------------------------
+\subsection{Implementasi Antarmuka Operasional, Streaming Telemetri, dan Human-in-the-Loop}
+%------------------------------------------------------------
+
+Keandalan subsistem backend dan mesin ReAct terdistribusi didukung oleh penyediaan antarmuka pengguna (\textit{frontend}) yang responsif, intuitif, dan kaya telemetri. Pengembangan antarmuka ini dikerjakan secara kolaboratif oleh tim pengembang melalui integrasi kontrak REST API, saluran transmisi aliran data SSE, dan manajemen status transaksional backend.
+
+\subsubsection{Tumpukan Teknologi dan Pendekatan Desain}
+Antarmuka pengguna dibangun menggunakan tumpukan teknologi modern:
+\begin{itemize}
+  \item \textbf{React 19 \& Vite:} Fondasi pustaka antarmuka dengan performa kompilasi instan dan fitur perenderan konkuren modern.
+  \item \textbf{Tailwind CSS:} Kerangka kerja penataan gaya berbasis utilitas untuk memastikan konsistensi antarmuka pengguna dengan tema industri modern (*Dark/Light Mode*).
+  \item \textbf{TanStack Query (React Query):} Pengelolaan sinkronisasi status server, \textit{caching}, dan mutasi data asinkron secara otomatis.
+  \item \textbf{Zustand:} Manajemen status global ringan pada sisi klien untuk menyimpan status sesi, filter aktif, dan preferensi pengguna.
+  \item \textbf{Three.js:} Pustaka grafis 3D berbasis WebGL yang digunakan untuk membangun antarmuka spasial kantor virtual (\textit{Live Virtual Office}).
+\end{itemize}
+
+\subsubsection{Katalog dan Rekrutmen Agen Cerdas}
+Pada modul manajemen agen, sistem menyediakan antarmuka katalog terpadu di mana operator dapat meninjau profil keahlian agen berdasarkan tingkat kapabilitas kognitif (\textit{Junior}, \textit{Senior}, \textit{Expert}). Setiap agen memiliki daftar keahlian (\textit{skills}) terkurasi, persona operasional, serta batasan parameter eksekusi yang transparan.
+
+\begin{figure}[H]
+  \centering
+  \fbox{\begin{minipage}{0.92\textwidth}
+    \centering\vspace{1.8cm}
+    \textbf{\color{gray!80!black}[Tangkapan Layar: Antarmuka Katalog dan Rekrutmen Agen Cerdas]}\\\vspace{0.2cm}
+    \scriptsize Halaman katalog agen yang menampilkan kartu profil agen, tingkatan kapabilitas (Junior/Senior/Expert), daftar keahlian, dan tombol rekrutmen.
+    \vspace{1.8cm}
+  \end{minipage}}
+  \caption{Antarmuka Katalog dan Rekrutmen Agen Cerdas Nedo Platform}
+  \label{fig:nedo_agent_catalog}
+\end{figure}
+
+Sebagaimana dicadangkan pada Gambar~\ref{fig:nedo_agent_catalog}, antarmuka ini memungkinkan pengelola sistem untuk merekrut atau menonaktifkan agen secara instan tanpa perlu melakukan konfigurasi ulang pada peladen.
+
+\subsubsection{Streaming Telemetri Real-Time via Server-Sent Events (SSE)}
+Untuk memberikan visibilitas penuh terhadap proses penalaran agen, platform mengimplementasikan saluran transmisi aliran telemetri berbasis \textit{Server-Sent Events} (SSE) pada rute rincian eksekusi tugas. Berbeda dari metode \textit{polling} konvensional yang membebani server, SSE memungkinkan backend mengirimkan peristiwa eksekusi secara searah dan seketika saat terjadi mutasi status.
+
+\begin{figure}[H]
+  \centering
+  \fbox{\begin{minipage}{0.92\textwidth}
+    \centering\vspace{2.0cm}
+    \textbf{\color{gray!80!black}[Tangkapan Layar: Panel Pemantauan Telemetri ReAct Waktu Nyata]}\\\vspace{0.2cm}
+    \scriptsize Panel rincian pekerjaan yang menampilkan alur penalaran kognitif agen (\textit{thought reasoning}), pemanggilan alat, log eksekusi terminal, dan stempel waktu via SSE stream.
+    \vspace{2.0cm}
+  \end{minipage}}
+  \caption{Panel Pemantauan Telemetri Eksekusi ReAct Waktu Nyata}
+  \label{fig:nedo_telemetry_streaming}
+\end{figure}
+
+Komponen antarmuka pada Gambar~\ref{fig:nedo_telemetry_streaming} memetakan tiga aliran peristiwa utama:
+\begin{enumerate}[label=\alph*.]
+  \item \textbf{Penalaran Kognitif (\textit{Thought Steps}):} Menampilkan teks monolog internal model bahasa saat menganalisis masalah sebelum memutuskan tindakan.
+  \item \textbf{Pemanggilan Alat (\textit{Tool Execution}):} Menampilkan kartu pemanggilan alat secara interaktif lengkap dengan parameter masukan, waktu komputasi, dan status hasil observasi.
+  \item \textbf{Log Terminal Mentah (\textit{Live Terminal Output}):} Menampilkan keluaran teks langsung dari eksekusi perintah baris atau komputasi Python di dalam kontainer sandbox.
+\end{enumerate}
+
+\subsubsection{Mekanisme Interaksi Human-in-the-Loop (HITL)}
+Ketika agen menghadapi situasi dengan ambiguitas tinggi atau memerlukan konfirmasi instruksi pengguna, agen mengeksekusi perkakas klarifikasi (\texttt{ask\_requester}). Eksekusi ini memicu perubahan status tugas menjadi menunggu masukan operator dan memancarkan sinyal ke antarmuka klien.
+
+\begin{figure}[H]
+  \centering
+  \fbox{\begin{minipage}{0.92\textwidth}
+    \centering\vspace{1.6cm}
+    \textbf{\color{gray!80!black}[Tangkapan Layar: Dialog Interaksi dan Otorisasi Human-in-the-Loop]}\\\vspace{0.2cm}
+    \scriptsize Kartu banner interaktif dan modal dialog persetujuan saat agen meminta klarifikasi atau otorisasi tindakan dari operator manusia.
+    \vspace{1.6cm}
+  \end{minipage}}
+  \caption{Antarmuka Dialog Otorisasi Human-in-the-Loop (HITL)}
+  \label{fig:nedo_hitl_dialog}
+\end{figure}
+
+Sistem antarmuka merender banner interaktif sebagaimana diilustrasikan pada Gambar~\ref{fig:nedo_hitl_dialog}, yang menghentikan sementara perhitungan batas waktu eksekusi. Operator dapat memberikan jawaban teks atau menyetujui parameter yang diajukan, yang kemudian diinjeksikan kembali ke dalam konteks percakapan agen untuk melanjutkan siklus penalaran hingga tuntas.
+
+\subsubsection{Papan Orkestrasi Run Board DAG dan Live Virtual Office}
+Untuk alur kerja multi-agen yang kompleks, platform menyediakan visualisasi graf dependensi tugas (\textit{Run Board DAG}). Visualisasi ini memetakan relasi ketergantungan antar-tugas (\textit{predecessors} dan \textit{successors}) beserta status penyelesaiannya secara grafis.
+
+Di samping itu, platform menyajikan inovasi visual berupa \textbf{Live Virtual Office} berbasis WebGL / Three.js. Komponen ini memodelkan tata letak ruang kerja fisik 3D, di mana setiap agen cerdas divisualisasikan sebagai avatar yang menempati meja kerja virtual. Status aktivitas agen (sedang berpikir, mengeksekusi alat di sandbox, atau dalam kondisi siaga) disinkronkan secara spasial melalui efek animasi dan pencahayaan dinamis, menghadirkan pengalaman pemantauan operasional yang interaktif dan modern bagi tim industri.
+
 
 %============================================================
 \section{PENGUJIAN DAN VERIFIKASI FUNGSIONAL}

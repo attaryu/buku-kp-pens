@@ -1131,13 +1131,13 @@ Pencatatan konsumsi sumber daya komputasi dipisahkan secara terstruktur menurut 
 
     % Events
     \draw[event_line] (0, -1.0) -- node[above, font=\tiny] {1. Panggil Perkakas} (3.8, -1.0);
-    \draw[event_line] (3.8, -1.5) -- node[above, font=\tiny] {2. Sinyal \texttt{tool.started}} (7.6, -1.5);
-    \draw[sql_line] (7.6, -2.0) -- node[above, font=\tiny] {3. Buka Langkah Transaksi} (11.2, -2.0);
+    \draw[event_line] (3.8, -1.5) -- node[above, font=\tiny] {2. Sinyal \texttt{ToolCallStart}} (7.6, -1.5);
+    \draw[sql_line] (7.6, -2.0) -- node[above, font=\tiny] {3. Buka Langkah \& Reservasi} (11.2, -2.0);
 
-    \node[draw=orange!80!black, fill=orange!10, rounded corners=2pt, font=\tiny, align=center] at (3.8, -2.8) {Eksekusi Perintah\\Sandbox / FastMCP};
+    \node[draw=orange!80!black, fill=orange!10, rounded corners=2pt, font=\tiny, align=center] at (3.8, -2.8) {Eksekusi Perkakas\\Native / Sandbox / MCP};
 
-    \draw[event_line] (3.8, -3.5) -- node[above, font=\tiny] {4. Sinyal \texttt{tool.completed}} (7.6, -3.5);
-    \draw[sql_line] (7.6, -4.1) -- node[above, font=\tiny, align=center] {5. Tutup Langkah Transaksi\\Catat Biaya Millitoken} (11.2, -4.1);
+    \draw[event_line] (3.8, -3.5) -- node[above, font=\tiny] {4. Sinyal \texttt{ToolCallFinish}} (7.6, -3.5);
+    \draw[sql_line] (7.6, -4.1) -- node[above, font=\tiny, align=center] {5. Tutup Langkah \& \textit{Settlement}\\Catat Biaya Millitoken} (11.2, -4.1);
     \draw[event_line] (7.6, -4.7) -- node[above, font=\tiny] {6. Hasil Observasi \& Biaya} (0, -4.7);
   \end{tikzpicture}
   }
@@ -1246,30 +1246,30 @@ Untuk memungkinkan alur kerja agen berpindah lintas mesin runner atau dieksekusi
 
 \begin{figure}[H]
   \centering
-  \resizebox{0.90\textwidth}{!}{%
+  \resizebox{0.94\textwidth}{!}{%
   \begin{tikzpicture}[
     >=Stealth,
     font=\sffamily,
-    node_box/.style={rectangle, rounded corners=4pt, draw=blue!70!black, fill=blue!10, thick, minimum width=3.4cm, minimum height=1.1cm, align=center, font=\scriptsize\bfseries},
-    storage_box/.style={cylinder, shape border rotate=90, draw=purple!80!black, fill=purple!10, thick, minimum width=2.6cm, minimum height=1.3cm, align=center, font=\scriptsize\bfseries},
-    proc_box/.style={rectangle, rounded corners=3pt, draw=black!75, fill=gray!10, thick, minimum width=3.4cm, minimum height=0.8cm, align=center, font=\tiny},
+    node_box/.style={rectangle, rounded corners=4pt, draw=blue!70!black, fill=blue!10, thick, minimum width=3.5cm, minimum height=1.1cm, align=center, font=\scriptsize\bfseries},
+    storage_box/.style={cylinder, shape border rotate=90, draw=purple!80!black, fill=purple!10, thick, minimum width=2.8cm, minimum height=1.45cm, align=center, font=\scriptsize\bfseries},
+    proc_box/.style={rectangle, rounded corners=3pt, draw=black!75, fill=gray!10, thick, minimum width=3.5cm, minimum height=1.0cm, align=left, font=\tiny},
     sync_line/.style={draw=orange!90!black, very thick, ->},
-    dash_line/.style={draw=black!75, thick, dashed}
+    flow_line/.style={draw=blue!70!black, thick, ->}
   ]
     % Nodes
-    \node[node_box] (runner1) at (-4.2, 2.0) {Runner Node A\\Agen Tahap Awal\\Direktori Kerja Lokal};
-    \node[storage_box] (minio_s3) at (0, 0) {MinIO S3 Bucket\\\texttt{workspaces/}\\Arsip Versi Snapshot\\Pointer Terkini};
-    \node[node_box] (runner2) at (4.2, 2.0) {Runner Node B\\Agen Tahap Lanjutan\\Direktori Kerja Lokal};
+    \node[node_box] (runner1) at (-5.4, 2.2) {Runner Node A\\Agen Tahap Awal\\Direktori Kerja Lokal};
+    \node[storage_box] (minio_s3) at (0, 0) {MinIO S3 Bucket\\\texttt{workspaces}\\Arsip \texttt{v1, v2, ...}\\Pointer \texttt{latest.tar.gz}};
+    \node[node_box] (runner2) at (5.4, 2.2) {Runner Node B\\Agen Tahap Lanjutan\\Direktori Kerja Lokal};
 
     % Intermediate steps
-    \node[proc_box] (pack) at (-4.2, 0.4) {1. Filter Berkas Terlarang\\2. Pengemasan Tarball\\3. Proteksi Jalur Zip-Slip};
-    \node[proc_box] (unpack) at (4.2, 0.4) {1. Unduh Arsip Terkini\\2. Ekstraksi Aman\\3. Hidrasi Direktori Kerja};
+    \node[proc_box] (pack) at (-5.4, 0) {1. Filter Excludes \& \texttt{.gitignore}\\2. Pengemasan Arsip \texttt{.tar.gz}\\3. Penentuan Versi Berikutnya};
+    \node[proc_box] (unpack) at (5.4, 0) {1. Validasi Jalur Zip-Slip\\2. Ekstraksi Aman (\texttt{data\_filter})\\3. Hidrasi Direktori Kerja};
 
     % Connections
-    \draw[dash_line] (runner1) -- (pack);
-    \draw[sync_line] (pack) -- node[below, font=\tiny, align=center] {Snapshot\\Unggah .tar.gz} (minio_s3);
-    \draw[sync_line] (minio_s3) -- node[below, font=\tiny, align=center] {Hidrasi\\Unduh .tar.gz} (unpack);
-    \draw[dash_line] (unpack) -- (runner2);
+    \draw[flow_line] (runner1) -- node[right, font=\tiny] {Selesai tugas} (pack);
+    \draw[sync_line] (pack) -- node[above, font=\tiny\bfseries] {Snapshot} node[below, font=\tiny, align=center] {Unggah \texttt{vN} \&\\\texttt{latest.tar.gz}} (minio_s3);
+    \draw[sync_line] (minio_s3) -- node[above, font=\tiny\bfseries] {Hidrasi} node[below, font=\tiny, align=center] {Unduh\\\texttt{latest.tar.gz}} (unpack);
+    \draw[flow_line] (unpack) -- node[left, font=\tiny] {Siap eksekusi} (runner2);
   \end{tikzpicture}
   }
   \caption{Alur Pengemasan Snapshot dan Sinkronisasi Ruang Kerja Terdistribusi via MinIO S3}
@@ -1278,8 +1278,8 @@ Untuk memungkinkan alur kerja agen berpindah lintas mesin runner atau dieksekusi
 
 Alur sinkronisasi pada Gambar~\ref{fig:workspace_sync_flow} mencakup tiga tahapan perlindungan:
 \begin{enumerate}[label=\arabic*.]
-  \item \textbf{Penyaringan Berkas Sampah (\textit{Hardcoded Excludes}):} Saat mengompresi ruang kerja menjadi arsip \texttt{.tar.gz}, sistem secara otomatis mengabaikan berkas direktori biner dan tembolok berat seperti \texttt{.git}, \texttt{node\_modules}, \texttt{\_\_pycache\_\_}, dan lingkungan virtual Python.
-  \item \textbf{Pencegahan Serangan Penetrasi Arsip (\textit{Zip-Slip Protection}):} Saat proses hidrasi atau ekstraksi arsip tarball pada node penerima, sistem memverifikasi setiap entri berkas guna memastikan tidak ada berkas yang diekstraksi di luar batas direktori kerja aman target.
+  \item \textbf{Penyaringan Berkas Sampah dan Aturan \texttt{.gitignore}:} Saat mengompresi ruang kerja menjadi arsip \texttt{.tar.gz}, sistem secara otomatis mengabaikan berkas dan direktori tembolok berat seperti \texttt{.git}, \texttt{node\_modules}, \texttt{\_\_pycache\_\_}, lingkungan virtual Python, dan direktori aset berat (\texttt{heavy\_assets}), sekaligus menghormati aturan \texttt{.gitignore} pada ruang kerja. Arsip kemudian diunggah sebagai versi tidak berubah (\textit{immutable version}) sekaligus memperbarui penunjuk aktif \texttt{latest.tar.gz}, sebelum direktori sementara pada node pengirim dibersihkan.
+  \item \textbf{Pencegahan Serangan Penetrasi Arsip (\textit{Zip-Slip Protection}):} Saat proses hidrasi atau ekstraksi arsip tarball pada node penerima, sistem memverifikasi setiap entri anggota arsip guna memastikan tidak ada berkas yang diekstraksi di luar batas direktori kerja aman target, diperkuat dengan penyaring ekstraksi aman bawaan Python (\texttt{data\_filter}).
   \item \textbf{Penegakan Single-Writer Guardrail pada DAG:} Pada tahap validasi pembentukan alur tugas multi-agen, validator graf tugas memastikan bahwa tidak ada dua agen konkuren yang memiliki izin menulis (\textit{write permission}) pada direktori kerja berkas yang sama secara bersamaan, sehingga mencegah terjadinya konflik penimpaan berkas (\textit{concurrent write collision}).
 \end{enumerate}
 

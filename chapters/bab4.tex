@@ -3,7 +3,7 @@
 %============================================================
 \chapter{RANCANGAN DAN IMPLEMENTASI SISTEM}
 
-Bab ini menguraikan proses perancangan dan implementasi teknis sistem perangkat lunak yang dikerjakan selama pelaksanaan kerja praktik di \NamaPerusahaan\ dalam periode \PeriodeKP. Pembahasan diawali dengan standarisasi pengembangan perangkat lunak yang berlaku di perusahaan, diikuti oleh pembahasan mendalam mengenai rancangan dan realisasi teknis proyek utama pertama, yaitu \textbf{Proyek MonGrid}. Bagian akhir bab menyajikan kerangka kerja untuk proyek-proyek berikutnya serta skema pengujian dan evaluasi fungsional.
+Bab ini menguraikan proses perancangan dan implementasi teknis sistem perangkat lunak yang dikerjakan selama pelaksanaan kerja praktik di \NamaPerusahaan\ dalam periode \PeriodeKP. Pembahasan diawali dengan standarisasi pengembangan perangkat lunak yang berlaku di perusahaan, diikuti oleh pembahasan mendalam mengenai rancangan dan realisasi teknis dari tiga proyek rekayasa perangkat lunak utama, yaitu \textbf{Proyek MonGrid}, sistem operasional terintegrasi \textbf{Proyek PT Makassar Trans}, serta platform otomatisasi alur kerja agen cerdas mandiri \textbf{Proyek Nedo Agentic Platform}. Pembahasan pada masing-masing proyek mencakup analisis kebutuhan operasional, perancangan arsitektur sistem, implementasi komponen fungsional, integrasi antarlayanan, tata kelola penyimpanan dan komunikasi asinkron, hingga skema pengujian dan evaluasi teknis.
 
 \section{STANDAR PENGEMBANGAN PERUSAHAAN}
 
@@ -953,9 +953,313 @@ Untuk mengisolasi visibilitas aset tersebut, antarmuka mengimplementasikan pola 
 \section{PROYEK PT MAKASSAR TRANS}
 %============================================================
 
-\textit{[Bagian ini disiapkan untuk pembahasan mendalam mengenai alur digitalisasi logistik tanda terima operasional, modul mobile tanda terima, integrasi web bulk input, worker OCR dengan verifikasi operator, layanan pengiriman dokumen Baileys WhatsApp, dan penyimpanan objek MinIO pada tahap berikutnya.]}
+PT Makassar Trans merupakan klien pada proyek yang dibahas dalam bagian ini. Pekerjaan berawal dari penyempurnaan aplikasi mobile Flutter untuk mendukung proses pencatatan tanda terima. Dalam perkembangan berikutnya, foto dokumen yang diambil melalui perangkat mobile dihubungkan dengan proses pengolahan data barang pada aplikasi web. Cakupan pekerjaan juga meliputi pembacaan foto menggunakan OCR, pemeriksaan hasil oleh operator, pengiriman dokumen melalui WhatsApp, dan penyimpanan berkas yang dapat digunakan oleh beberapa layanan.
+
+Komponen mobile, web, OCR, dan WhatsApp memiliki fungsi serta konfigurasi masing-masing. Meskipun demikian, data tanda terima dan dokumen yang terkait menjadi penghubung antarproses tersebut. Oleh sebab itu, uraian berikut disusun menurut alur operasional proyek, dengan mengacu pada catatan realisasi proyek PT Makassar Trans yang diperbarui pada 2 November 2026~\cite{matrans_realisasi}.
+
+\subsection{Gambaran Umum Pekerjaan}
+
+Pekerjaan pada proyek PT Makassar Trans dimulai dari aplikasi mobile Flutter yang digunakan petugas untuk mencatat tanda terima dan mengelola foto dokumen. Kebutuhan berikutnya adalah memastikan foto dari perangkat tersebut dapat ditemukan oleh operator ketika mengolah rincian barang melalui aplikasi web. Alur ini menghubungkan aktivitas petugas di lapangan dengan pekerjaan administrasi pada aplikasi web.
+
+Setelah foto tersedia pada aplikasi web, operator dapat melihat dokumen sumber saat mengisi rincian barang. Untuk membantu pembacaan dokumen, foto dapat diproses melalui layanan OCR yang berjalan sebagai pekerjaan latar belakang. Hasil pembacaan disediakan dalam bentuk draf agar operator tetap dapat memeriksa dan memperbaiki data sebelum menggunakannya. Proyek ini juga mencakup pengiriman tanda terima dan nota salinan melalui WhatsApp serta penggunaan MinIO untuk menyimpan foto dan dokumen PDF.
+
+Pembahasan tidak memisahkan pekerjaan berdasarkan jumlah repositori atau layanan, tetapi mengikuti hubungan proses yang menggunakan tanda terima dan dokumen terkait. Catatan realisasi proyek menjadi acuan untuk menjelaskan perubahan, hasil verifikasi, dan bagian yang masih memerlukan pengembangan~\cite{matrans_realisasi}.
+
+\subsection{Analisis Kebutuhan Operasional}
+
+Alur proyek perlu memenuhi kebutuhan dua kelompok pengguna. Petugas yang menggunakan aplikasi mobile membutuhkan kepastian bahwa tanda terima benar-benar tersimpan, sarana untuk mengambil dan memotong foto dokumen, serta kemampuan melanjutkan pekerjaan ketika pengiriman foto terganggu. Sementara itu, operator aplikasi web membutuhkan akses ke foto sumber, tampilan yang memudahkan perbandingan dokumen dengan isian barang, dan fasilitas untuk memasukkan beberapa baris barang melalui satu halaman.
+
+Kebutuhan lain berkaitan dengan pengiriman dokumen kepada relasi. Informasi nomor tujuan harus mengacu pada relasi yang dipilih dalam transaksi, sedangkan dokumen dan status pengirimannya perlu dapat ditelusuri. Penyimpanan tanda terima juga harus dibedakan dari proses pengiriman WhatsApp. Dengan pemisahan tersebut, kegagalan pengiriman pesan tidak serta-merta dianggap sebagai kegagalan penyimpanan tanda terima.
+
+Hubungan antara kebutuhan operasional dan perubahan yang dilakukan diringkas pada Tabel~\ref{tab:matrans_kebutuhan}.
+
+\begin{longtblr}[
+  caption = {Pemetaan Kebutuhan Operasional dan Perubahan pada Proyek PT Makassar Trans},
+  label = {tab:matrans_kebutuhan}
+]{
+  colspec = {Q[l,m,3.6cm] Q[l,m,5.8cm]},
+  hlines,
+  vlines,
+  row{1} = {font=\bfseries, halign=c},
+}
+  Kebutuhan & Perubahan yang Dikerjakan \\
+  Kepastian tanda terima telah tersimpan & Aplikasi mobile memeriksa hasil proses bisnis dan identitas data pada respons server. \\
+  Ketersediaan dokumen sumber bagi operator & Foto dari perangkat mobile dihubungkan dengan tanda terima dan ditampilkan pada halaman web. \\
+  Pengisian banyak rincian barang & Halaman Bulk Input menyediakan pengelolaan baris serta pemeriksaan kode barang dan jumlah koli sebelum penyimpanan. \\
+  Bantuan membaca ukuran dan koli & Worker OCR menghasilkan draf untuk setiap foto yang dapat diperiksa dan diperbaiki operator. \\
+  Pemberitahuan penerimaan barang & Antrean notifikasi menyiapkan PDF tanda terima dan mengirimkannya melalui layanan Baileys. \\
+  Pengiriman salinan nota tagihan & Nota COPY dikirim dari pratinjau cetak melalui antrean WhatsApp. \\
+  Pemantauan pengiriman dokumen & Halaman antrean WhatsApp menyediakan pencarian, filter status, rincian pekerjaan, dan pembaruan status. \\
+  Akses berkas oleh beberapa layanan & Foto dan PDF disimpan pada MinIO, sedangkan metadata serta status proses tetap dikelola oleh layanan terkait. \\
+\end{longtblr}
+
+Kebutuhan nonfungsional yang diperhatikan meliputi ketahanan terhadap percobaan ulang, konsistensi data, keterlacakan status pekerjaan, dan pemisahan proses yang membutuhkan waktu lebih lama dari permintaan pengguna. Kebutuhan tersebut diterapkan melalui identitas dokumen, transaksi pada Bulk Input, pencatatan antrean, serta penggunaan worker latar belakang. Pengukuran kinerja dan kapasitas pada kondisi penggunaan sebenarnya masih perlu dilengkapi.
+
+\subsection{Rancangan Integrasi Sistem dan Arsitektur Layanan}
+
+Sistem menghubungkan aplikasi mobile yang digunakan petugas, aplikasi web beserta backend untuk pengelolaan data operasional, worker OCR, layanan WhatsApp, dan penyimpanan objek MinIO. Setiap komponen memiliki tanggung jawab yang berbeda sebagaimana dirangkum pada Tabel~\ref{tab:matrans_komponen}.
+
+\begin{table}[H]
+  \centering
+  \caption{Komponen Sistem dan Tanggung Jawabnya pada Proyek PT Makassar Trans}
+  \label{tab:matrans_komponen}
+  \begin{tblr}{
+    colspec = {Q[l,m,3.4cm] Q[l,m,6.0cm]},
+    hlines,
+    vlines,
+    row{1} = {font=\bfseries, halign=c},
+  }
+    Komponen & Tanggung Jawab \\
+    Aplikasi mobile Flutter & Mencatat tanda terima, mengambil dan memotong foto, menyimpan data sementara pada perangkat, serta mengirimkan berkas ke server~\cite{matrans_mobile}. \\
+    Aplikasi web dan backend & Mengelola data operasional, menyediakan foto, memfasilitasi Bulk Input dan tagihan, serta menyediakan data bagi layanan pendukung. \\
+    Layanan OCR & Membaca foto dokumen menggunakan model vision dan menyimpan hasilnya sebagai draf per foto~\cite{matrans_ocr}. \\
+    Layanan WhatsApp & Menyiapkan PDF, mengirim dokumen melalui Baileys, dan mencatat keadaan pengiriman~\cite{matrans_baileys}. \\
+    MinIO & Menyimpan foto asli, hasil pemotongan, dan PDF yang dibutuhkan oleh beberapa layanan~\cite{matrans_minio}. \\
+  \end{tblr}
+\end{table}
+
+Hubungan antarkomponen, jalur pertukaran data, dan penyimpanan berkas digambarkan pada Gambar~\ref{fig:matrans_hubungan_komponen}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{assets/gambar/matrans/hubungan_komponen_matrans.png}
+  \caption{Hubungan Komponen Sistem PT Makassar Trans}
+  \label{fig:matrans_hubungan_komponen}
+\end{figure}
+
+Identitas tanda terima digunakan untuk menghubungkan data utama dengan dokumen pendukung. Setiap foto memiliki identitas dokumen yang tetap dari perangkat agar pengiriman ulang dapat dikenali. Proses OCR menggunakan identitas dokumen tersebut untuk mengaitkan draf dengan foto sumber, sedangkan pengiriman WhatsApp memiliki identitas pekerjaan tersendiri. Pemisahan identitas ini diperlukan karena satu tanda terima dapat memiliki beberapa foto dan keberhasilan satu proses tidak selalu menandakan proses lainnya telah selesai.
+
+Penyimpanan tanda terima, pengiriman foto, penyimpanan rincian barang, dan pengiriman pesan diperlakukan sebagai proses yang berbeda. Karena itu, ketika nomor relasi tidak tersedia atau tidak valid, pengiriman notifikasi dapat dihentikan tanpa membatalkan tanda terima yang sudah tersimpan. Demikian pula, apabila OCR belum dapat menghasilkan data, operator masih dapat memasukkan rincian barang secara manual melalui Bulk Input.
+
+\subsection{Pengembangan Aplikasi Mobile Flutter}
+
+Aplikasi mobile Flutter digunakan petugas untuk mengakses tanda terima dan mengelola foto dokumen. Penyesuaian pada aplikasi dilakukan dengan mengikuti struktur yang telah tersedia dan memperhatikan hubungan antara tampilan, pengelolaan data, serta respons backend~\cite{matrans_mobile}.
+
+\subsubsection{Struktur Aplikasi dan Alur Data}
+
+Struktur aplikasi membagi tanggung jawab ke dalam empat bagian. Bagian \textit{core} memuat konfigurasi dan layanan umum, bagian \textit{data} menangani akses serta pemetaan data, bagian \textit{domain} berisi entitas dan operasi, sedangkan bagian \textit{presentation} mengatur tampilan aplikasi. Layanan yang telah tersedia pada aplikasi mencakup konfigurasi API, autentikasi, penyimpanan lokal, Bluetooth, dan printer.
+
+Alur pembacaan daftar tanda terima dimulai dari tindakan pengguna pada halaman, diteruskan ke operasi data, lalu ke provider yang mengakses endpoint backend. Respons server dipetakan ke model sebelum ditampilkan. Ketika terjadi masalah, informasi yang ditampilkan disesuaikan dengan operasi yang sedang dilakukan, misalnya kegagalan memuat foto atau belum adanya konfirmasi penyimpanan dari server.
+
+\subsubsection{Pemeriksaan Hasil Penyimpanan Tanda Terima}
+
+Perbaikan pada proses penyimpanan dilakukan dengan memeriksa hasil bisnis yang dikembalikan server, bukan hanya mengandalkan keberhasilan komunikasi HTTP. Aplikasi juga memeriksa penanda keberhasilan dan keberadaan identitas data pada respons. Apabila server menyatakan proses gagal atau identitas data tidak diterima, aplikasi tidak menampilkan pesan bahwa tanda terima telah berhasil disimpan.
+
+Isian formulir tetap mengikuti pembentukan data yang berlaku pada backend. Kolom isi dikirim melalui alur input, sedangkan nomor tanda terima, barcode, dan status dibentuk melalui mekanisme server. Setelah penyimpanan dinyatakan berhasil, daftar dimuat kembali agar tampilan menunjukkan data terbaru. Pengelolaan foto kemudian dilakukan pada tanda terima yang telah memiliki identitas tersimpan.
+
+\subsubsection{Pengambilan dan Pemotongan Foto Dokumen}
+
+Foto dikelola melalui halaman detail tanda terima yang sudah tersimpan. Petugas dapat mengambil gambar menggunakan kamera atau memilih berkas dari galeri. Aplikasi menyediakan penyesuaian orientasi, pemotongan melalui empat titik sudut, rotasi, serta pratinjau sebelum foto dikirim ke server.
+
+Pemotongan digunakan untuk memusatkan tampilan pada bagian dokumen yang diperlukan. Namun, bagian yang berisi informasi ukuran atau pengali koli perlu tetap terlihat. Foto sebelum dipotong juga dipertahankan sehingga operator web dapat membandingkannya dengan hasil pemotongan apabila ada informasi yang tampak hilang.
+
+\subsubsection{Penyimpanan Sementara dan Penanganan Gangguan Pengiriman}
+
+Foto yang belum memperoleh konfirmasi dari server tetap disimpan sebagai data sementara di perangkat. Jika pengiriman gagal atau halaman aplikasi ditutup, petugas dapat kembali ke tanda terima yang sama untuk melanjutkan pekerjaan. Data sementara dibersihkan setelah proses berhasil atau ketika pengguna secara sengaja menghapusnya.
+
+Ketika mengirim foto, aplikasi menyertakan identitas dokumen yang tetap, foto hasil pemotongan, dan foto asli. Respons server diperiksa untuk memastikan dokumen yang diterima memiliki identitas yang sesuai. Pada sisi server, permintaan ulang dengan identitas dan isi yang sama akan mengembalikan dokumen yang telah tersimpan, sedangkan penggunaan identitas yang sama dengan isi berbeda ditolak. Mekanisme tersebut menjaga agar percobaan ulang dari perangkat tetap merujuk pada dokumen yang benar.
+
+Penyesuaian antarmuka juga mencakup tema, area aman layar, pemuatan ulang daftar, dan kejelasan tindakan pada pengelolaan foto. Aplikasi membedakan dokumen yang telah tersimpan di server dengan data sementara yang masih berada pada perangkat. Pada penelusuran kendala daftar dokumen, ditemukan kasus yang berkaitan dengan respons kesalahan dari server dan perilaku autentikasi mobile. Pemeriksaan kemudian mencakup permintaan aplikasi, endpoint backend, dan pengelolaan sesi karena masalah yang tampak pada halaman dapat berasal dari interaksi beberapa lapisan.
+
+Alur penyimpanan tanda terima pada aplikasi mobile dirangkum pada Gambar~\ref{fig:matrans_alur_simpan_mobile}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.68\textwidth]{assets/gambar/matrans/alur_simpan_tanda_terima_mobile.png}
+  \caption{Alur Penyimpanan Tanda Terima pada Aplikasi Mobile}
+  \label{fig:matrans_alur_simpan_mobile}
+\end{figure}
+
+\subsection{Integrasi Foto dan Bulk Input pada Aplikasi Web}
+
+Pada halaman Bulk Input, operator memilih tanda terima yang akan diproses dan melihat foto terkait di samping tabel barang. Panel foto menyediakan pemilihan foto, pembesaran tampilan, rotasi, serta akses untuk melihat foto sebelum pemotongan. Lebar area foto dapat diatur agar dokumen sumber dan tabel tetap mudah dibaca. Selain menerima foto dari perangkat mobile, aplikasi web juga menyediakan pengiriman berkas dari komputer.
+
+Tampilan foto yang berdekatan dengan tabel membantu operator mencocokkan nilai yang diisikan dengan dokumen sumber. Hasil OCR bukan satu-satunya acuan karena operator tetap dapat memeriksa gambar asli. Jika OCR belum tersedia atau hasil pembacaannya tidak dapat digunakan, pengisian barang secara manual tetap dapat dilakukan melalui halaman yang sama.
+
+Bulk Input menyediakan pengisian informasi bersama, seperti cabang, tanda terima, kontainer, kelompok tagihan, dan satuan awal, cukup pada bagian induk. Operator selanjutnya dapat menambah, menyalin, atau menghapus baris barang. Satu tanda terima dapat memuat beberapa kelompok kode dengan pemeriksaan jumlah koli dan urutannya. Aturan penomoran kode juga menangani kelanjutan setelah huruf Z, yaitu AA dan seterusnya.
+
+Perhitungan barang mengikuti aturan yang telah digunakan aplikasi, termasuk ukuran, berat, jumlah, harga, potongan, dan pembulatan. Penyimpanan Bulk Input mendukung paling banyak 300 baris dalam satu permintaan. Backend memeriksa hak akses, keterkaitan cabang dengan tanda terima, kode yang telah digunakan, dan batas jumlah koli. Baris-baris dalam satu permintaan disimpan menggunakan satu transaksi, sehingga apabila satu baris gagal divalidasi, keseluruhan penyimpanan pada permintaan tersebut dibatalkan.
+
+Penguncian berdasarkan tanda terima juga digunakan untuk mencegah dua permintaan bersamaan melewati pemeriksaan kapasitas atau duplikasi secara terpisah. Jika respons jaringan terputus setelah permintaan dikirim, operator perlu memeriksa data yang sudah tersimpan sebelum mengulang proses. Penolakan kode yang telah digunakan merupakan perlindungan terhadap duplikasi pada alur tersebut, tetapi tidak berarti seluruh modul aplikasi telah memiliki jaminan idempotensi yang seragam.
+
+\subsection{Integrasi OCR dan Pemeriksaan oleh Operator}
+
+Foto yang telah tersimpan dapat dimasukkan ke antrean OCR. Worker mengambil pekerjaan dari antrean, memperoleh foto melalui API web, menjalankan pembacaan menggunakan model vision melalui Ollama, kemudian mengirim hasilnya kembali. Pemrosesan dilakukan di latar belakang sehingga aplikasi web tidak perlu menunggu seluruh proses inferensi selesai dalam satu permintaan~\cite{ollama_vision, matrans_ocr}.
+
+Alur pemrosesan OCR, koreksi operator, dan pengiriman dokumen diperlihatkan pada Gambar~\ref{fig:matrans_alur_ocr}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{assets/gambar/matrans/alur_ocr_koreksi_pengiriman.png}
+  \caption{Alur OCR, Koreksi Operator, dan Pengiriman Dokumen}
+  \label{fig:matrans_alur_ocr}
+\end{figure}
+
+Hasil pembacaan disimpan sebagai draf untuk setiap foto. Identitas dokumen dan status antrean digunakan untuk menjaga hubungan antara hasil OCR dan foto sumber. Worker tidak menyimpan hasil pembacaan langsung sebagai data barang akhir; keputusan untuk memasukkannya ke tabel barang tetap dilakukan oleh operator.
+
+Parser mengubah keluaran model menjadi data yang diperlukan pada tabel barang, terutama panjang, lebar, tinggi, dan jumlah koli. Ketika tulisan tidak terbaca, keluaran model berulang, atau pola angka belum lengkap, nilai yang belum dapat dipastikan ditandai agar diperiksa, bukan diperlakukan sebagai data yang sudah benar. Operator dapat membuka draf dari server, mengubah isinya, menyimpan koreksi, atau menjalankan kembali pembacaan sesuai alur yang tersedia. Hasil tersebut tetap dibandingkan dengan dokumen sumber sebelum dipakai sebagai rincian barang.
+
+Penanganan perubahan keadaan foto juga diperhatikan selama pekerjaan OCR berlangsung. Jika foto dihapus, foto asli, hasil pemotongan, dan draf OCR yang terkait ikut ditangani, sedangkan data barang yang sudah tersimpan tetap dipertahankan. Penanda penghapusan digunakan agar hasil worker yang datang terlambat tidak mengaktifkan kembali foto yang telah dihapus atau mengabaikan perubahan draf.
+
+\subsection{Pengiriman Dokumen dengan Baileys}
+
+Notifikasi awal dibuat setelah tanda terima baru berhasil disimpan melalui aplikasi web atau mobile. Backend menyiapkan data dan kontak untuk pekerjaan pengiriman. Nomor tujuan diambil dari nomor telepon relasi yang dipilih pada transaksi, bukan secara otomatis dari nomor pengirim atau penerima barang. Apabila nomor tidak tersedia atau tidak valid, pekerjaan pengiriman tidak dilanjutkan, tetapi tanda terima yang sudah tersimpan tetap dipertahankan~\cite{matrans_baileys}.
+
+Worker menyiapkan PDF tanda terima berdasarkan data awal. Proses ini tidak perlu menunggu seluruh informasi ukuran, kargo, kontainer, atau proses cetak Bluetooth tersedia; informasi yang belum ada ditampilkan mengikuti format dokumen. Setiap tanda terima memiliki identitas notifikasi awal yang tetap. Identitas pekerjaan, data yang disiapkan, dan catatan pengiriman digunakan untuk mencegah notifikasi kedua ketika tanda terima disunting atau dicetak ulang. Jika perlu dicoba kembali, pengiriman tetap mengacu pada pekerjaan yang sama, termasuk tujuan dan dokumen yang telah disiapkan.
+
+Siklus pada Gambar~\ref{fig:matrans_siklus_pengiriman} memperlihatkan tahapan Draft, Draft Terkunci, Menunggu Kirim, Terkirim, dan Selesai. Ketika terjadi kegagalan, pekerjaan masuk ke keadaan Gagal dan dapat dilanjutkan melalui Percobaan Ulang. Dalam pemantauan operasional, keadaan pengiriman perlu dibedakan antara sudah masuk antrean, terkirim, diterima, gagal, atau belum dapat dipastikan. Respons awal hanya menunjukkan bahwa dokumen masuk antrean, sedangkan gangguan setelah permintaan dikirim belum tentu membuktikan bahwa pesan tidak sampai. Karena itu, percobaan ulang mempertahankan identitas pekerjaan yang sama dan tidak membuat pekerjaan baru setiap kali respons tidak diterima.
+
+Siklus keadaan pengiriman dokumen ditampilkan pada Gambar~\ref{fig:matrans_siklus_pengiriman}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.62\textwidth]{assets/gambar/matrans/siklus_keadaan_pengiriman.png}
+  \caption{Siklus Keadaan Pengiriman Dokumen}
+  \label{fig:matrans_siklus_pengiriman}
+\end{figure}
+
+Pengiriman nota tagihan dilakukan secara manual dari pratinjau cetak. Setelah operator memberikan konfirmasi, setiap nota dibuat menjadi PDF tersendiri yang memuat nota COPY dan rincian muatan COPY apabila tersedia. Pengiriman nota menggunakan antrean dan layanan Baileys yang sama, tetapi mempunyai identitas pekerjaan yang berbeda dari notifikasi tanda terima. Satu permintaan dapat memproses paling banyak 20 nota. Respons awal hanya menandakan bahwa dokumen telah masuk antrean, bukan bahwa penerima telah menerimanya.
+
+Halaman antrean WhatsApp menyediakan daftar pekerjaan, pencarian, filter status, pembagian halaman, tampilan rincian, dan pembaruan status secara berkala. Informasi heartbeat digunakan untuk melihat keadaan koneksi worker dan WhatsApp. Operator yang memiliki wewenang dapat menjeda atau melanjutkan antrean. Pembatalan juga membedakan pekerjaan yang belum dikirim dari pekerjaan yang sedang diproses atau memiliki hasil pengiriman yang belum pasti.
+
+\subsection{Penyimpanan Berkas Menggunakan MinIO}
+
+MinIO digunakan untuk menyimpan foto asli, foto hasil pemotongan, PDF tanda terima, PDF nota WhatsApp, dan berkas yang diunggah melalui aplikasi web~\cite{minio_doc, matrans_minio}. Worker OCR mengambil foto melalui API web sehingga tidak perlu mengakses kredensial penyimpanan objek secara langsung. Sementara itu, metadata foto, penanda penghapusan, penguncian, catatan antrean, serta sesi WhatsApp tetap dikelola oleh penyimpanan masing-masing layanan. Dengan demikian, keberadaan berkas pada penyimpanan objek tidak menggantikan informasi status dan metadata yang diperlukan untuk mengatur proses.
+
+Pemisahan antara penyimpanan berkas dan data pendukung dirangkum pada Tabel~\ref{tab:matrans_pemisahan_penyimpanan}.
+
+\begin{table}[H]
+  \centering
+  \caption{Pemisahan Penyimpanan Data dan Berkas pada Proyek PT Makassar Trans}
+  \label{tab:matrans_pemisahan_penyimpanan}
+  \begin{tblr}{
+    colspec = {Q[l,m,4.2cm] Q[l,m,5.2cm]},
+    hlines,
+    vlines,
+    row{1} = {font=\bfseries, halign=c},
+  }
+    Jenis Data & Lokasi atau Tanggung Jawab Penyimpanan \\
+    Foto asli dan hasil pemotongan & Objek MinIO untuk dokumen OCR. \\
+    PDF tanda terima dan nota & Objek MinIO untuk dokumen pengiriman. \\
+    Hasil OCR dan draf terstruktur & Basis data antrean OCR. \\
+    Metadata foto dan penanda penghapusan & Penyimpanan privat layanan web. \\
+    Status dan catatan pengiriman & Penyimpanan layanan antrean WhatsApp. \\
+    Sesi autentikasi WhatsApp & Penyimpanan sesi layanan Baileys. \\
+  \end{tblr}
+\end{table}
+
+Hubungan penyimpanan data dengan berkas objek ditunjukkan pada Gambar~\ref{fig:matrans_pemisahan_penyimpanan}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\textwidth]{assets/gambar/matrans/pemisahan_penyimpanan_data_berkas.png}
+  \caption{Pemisahan Penyimpanan Data dan Berkas}
+  \label{fig:matrans_pemisahan_penyimpanan}
+\end{figure}
+
+Penerapan MinIO tetap memperhatikan metadata yang digunakan untuk membaca berkas lama. Seluruh arsip yang sudah ada tidak dipindahkan sekaligus ke penyimpanan objek. Untuk unggahan baru, kegagalan akses ke objek diperlakukan sebagai kegagalan proses dan tidak dialihkan diam-diam ke lokasi penyimpanan lain.
+
+Kebijakan masa simpan dibedakan menurut jenis berkas. PDF yang digunakan pada pengiriman WhatsApp secara bawaan disimpan selama 14 hari, sedangkan foto untuk OCR mengikuti aturan masa simpan tujuh hari. Pembersihan berkas dipicu oleh aktivitas worker OCR. Oleh karena itu, apabila worker berhenti, proses pembersihan dapat tertunda. Aturan tersebut berlaku untuk jenis dokumen terkait dan bukan kebijakan retensi bagi seluruh data operasional.
+
+\subsection{Perbaikan Pendukung pada Aplikasi Web}
+
+Selain alur tanda terima, foto, dan pengiriman dokumen, terdapat sejumlah penyesuaian pada modul pendukung aplikasi web. Pada laporan pemantauan nota, filter mencakup kantor, kapal atau jadwal, relasi, serta status. Ringkasan yang ditampilkan meliputi jumlah nota, nilai tagihan, pembayaran, dan sisa tagihan. Perhitungan menggunakan data pembayaran yang masih berlaku dan tidak memasukkan pembayaran yang sudah tidak aktif. Jumlah pembayaran juga dibedakan dari nilai nota yang berstatus lunas, karena pembayaran sebagian belum menjadikan nota masuk kelompok lunas. Ekspor Excel juga dilengkapi penjumlahan nominal untuk data yang benar-benar masuk ke hasil ekspor.
+
+Pengaturan diskon relasi menyediakan rentang masa tidak aktif antara 1 sampai 120 bulan. Nilai awalnya adalah 24 bulan, dengan aturan dalam keadaan nonaktif. Pemeriksaan menggunakan riwayat tanda terima yang relevan dan mengabaikan transaksi yang telah dihapus atau memiliki tanggal di masa depan. Pemeriksaan dilakukan sebelum transaksi baru dicatat agar aktivitas relasi yang kembali tidak mengubah perhitungan masa tidak aktif sebelumnya. Diskon yang telah kedaluwarsa dinonaktifkan dan tidak otomatis aktif kembali hanya karena terdapat transaksi baru.
+
+Perbaikan lain meliputi pengurutan pemilih jadwal kapal berdasarkan tanggal muat, penambahan filter rute pada pemilih kapal atau jadwal nota, serta filter status nota pada proses pembayaran. Pencarian juga disesuaikan agar mendukung pencocokan melalui tanda kutip dan menangani karakter pola sesuai aturan aplikasi. Penelusuran fungsi yang tidak terlihat perlu mempertimbangkan izin akun, karena ketersediaan tombol atau tindakan dapat dipengaruhi hak akses pengguna.
+
+\subsection{Deployment dan Pemeliharaan}
+
+Konfigurasi container dan pipeline disiapkan untuk aplikasi web, layanan OCR, serta layanan Baileys. Penyesuaian backend mencakup kompatibilitas dengan lingkungan PHP 8.4, termasuk komponen aplikasi dan dependensi yang digunakan. Pemisahan worker dari aplikasi web memungkinkan pekerjaan pembacaan dokumen dan pengiriman pesan berjalan di luar permintaan langsung pengguna~\cite{docker_doc, gitlab_cicd}.
+
+Panduan layanan OCR pada perangkat Mac mini menggunakan worker di dalam container, sedangkan Ollama dijalankan langsung pada sistem perangkat tersebut. Token, alamat endpoint, dan penyimpanan persisten perlu disesuaikan pada setiap lingkungan. Perubahan kode yang membutuhkan layanan tambahan juga harus disertai penyesuaian konfigurasi, sebab keberhasilan proses build belum memastikan layanan dapat berkomunikasi pada server tujuan.
+
+Lingkungan lokal disiapkan untuk memperlihatkan hubungan antara aplikasi web, mobile, dan WhatsApp. Pengujian pengiriman dilakukan dengan nomor tujuan uji agar pesan percobaan tidak dikirim kepada pelanggan. Alamat layanan pada aplikasi mobile ditentukan ketika aplikasi dibangun, sehingga perubahan alamat server dapat memerlukan pembangunan ulang aplikasi. Ketika koneksi bermasalah, pemeriksaan dilakukan terhadap jalur perangkat, akses jaringan, respons API, serta catatan layanan untuk membedakan kendala jaringan dari masalah autentikasi atau validasi data.
+
+\subsection{Pengujian dan Evaluasi}
+
+Pengujian dilakukan pada fungsi lokal, integrasi di lingkungan sementara, dan pratinjau antarmuka. Skenario yang diperiksa dipilih berdasarkan risiko perubahan, antara lain pengiriman ulang berkas, kegagalan salah satu baris pada Bulk Input, konflik draf, dan hasil worker yang datang setelah keadaan dokumen berubah. Simulasi digunakan untuk memeriksa perilaku komponen tanpa mengirim dokumen nyata kepada pelanggan.
+
+Tabel~\ref{tab:matrans_catatan_verifikasi} merangkum catatan verifikasi bertanggal 18 Oktober 2026~\cite{matrans_verifikasi}. Catatan ini menunjukkan pengujian pada konfigurasi yang disebutkan dan bukan bukti bahwa seluruh skenario penggunaan telah diuji di lingkungan produksi.
+
+\begin{longtblr}[
+  caption = {Ringkasan Catatan Verifikasi Proyek PT Makassar Trans pada 18 Oktober 2026},
+  label = {tab:matrans_catatan_verifikasi}
+]{
+  colspec = {Q[l,m,3.0cm] Q[l,m,3.6cm] Q[l,m,2.8cm]},
+  hlines,
+  vlines,
+  row{1} = {font=\bfseries, halign=c},
+}
+  Komponen & Bukti yang Tercatat & Batas Cakupan \\
+  Python dan worker OCR & 52 pengujian lokal lulus; pembaruan Docker mencatat 53 pengujian lulus dan pemeriksaan gaya kode. & Model pada pengujian HTTP disimulasikan. \\
+  Logika web dan foto & Pengujian draf, foto, penomoran, perhitungan, validasi, dan penyimpanan privat lulus. & Tidak menggantikan pengujian seluruh aplikasi produksi. \\
+  Integrasi MySQL & Antrean, lease, percobaan ulang, konflik draf, empat proses bersamaan, dan rollback diperiksa. & Menggunakan basis data sementara; sebagian bagian memakai pengganti. \\
+  Flutter & Dua pengujian pemotongan foto lulus; analisis kode tidak menemukan kesalahan atau peringatan. & Belum membuktikan penggunaan kamera pada perangkat fisik. \\
+  Pratinjau peramban & Hasil OCR mengisi tabel; koreksi dapat dipertahankan dan draf tiap foto terpisah. & Pengujian menggunakan data sintetis dan penyimpanan sementara. \\
+\end{longtblr}
+
+Selain pengujian tersebut, disiapkan rencana verifikasi operasional seperti pada Tabel~\ref{tab:matrans_rencana_pengujian}. Kolom hasil aktual belum diisi karena skenario tersebut masih memerlukan pengujian menggunakan perangkat petugas dan akun sebenarnya. Oleh karena itu, tabel ini merupakan daftar rencana, bukan daftar hasil yang telah dinyatakan lulus.
+
+\begin{longtblr}[
+  caption = {Rencana Pengujian Operasional yang Masih Perlu Dilengkapi},
+  label = {tab:matrans_rencana_pengujian}
+]{
+  colspec = {Q[l,m,3.6cm] Q[l,m,4.4cm] Q[c,m,1.4cm]},
+  hlines,
+  vlines,
+  row{1} = {font=\bfseries, halign=c},
+}
+  Skenario & Hasil yang Diharapkan & Hasil Aktual \\
+  Penyimpanan tanda terima valid & Identitas tersimpan dan daftar diperbarui. & [\,] \\
+  Server menolak penyimpanan & Aplikasi menampilkan kegagalan sesuai respons server. & [\,] \\
+  Pengiriman terputus lalu dicoba kembali & Data sementara tersedia dan dokumen tidak tercatat ganda. & [\,] \\
+  Kamera dan pemotongan pada perangkat & Foto dapat dipratinjau dan dibandingkan melalui web. & [\,] \\
+  Koreksi draf lalu berpindah foto & Koreksi tetap terhubung dengan foto yang sesuai. & [\,] \\
+  Bulk Input memuat baris tidak valid & Seluruh kelompok penyimpanan dibatalkan. & [\,] \\
+  Nomor relasi tidak valid & Notifikasi tidak dikirim, sedangkan tanda terima tetap tersimpan. & [\,] \\
+  Cetak ulang tanda terima & Tidak terbentuk notifikasi awal kedua. & [\,] \\
+  Pengiriman nota COPY & PDF dan status pekerjaan sesuai dengan nota yang dipilih. & [\,] \\
+  Akun tanpa izin & Akses data atau tindakan yang tidak diizinkan ditolak. & [\,] \\
+\end{longtblr}
+
+Hasil pekerjaan menunjukkan adanya hubungan fungsional antara pencatatan melalui mobile, pengelolaan foto, pemeriksaan pada web, pengisian rincian barang, dan pengiriman dokumen. Meskipun demikian, belum tersedia pengukuran menyeluruh mengenai perbandingan waktu pengisian manual dengan bantuan OCR, tingkat koreksi operator, ataupun persentase keberhasilan pengiriman selama seluruh periode penggunaan.
+
+Pengujian menggunakan model simulasi hanya menunjukkan perilaku pertukaran data pada skenario yang diperiksa. Hasil tersebut belum menggambarkan ketepatan OCR untuk seluruh variasi dokumen operasional. Demikian pula, pengujian pemotongan foto menggunakan gambar sintetis belum menggantikan pemeriksaan kamera pada perangkat Android dengan kondisi pencahayaan dan orientasi yang beragam.
+
+\subsection{Cakupan Hasil dan Pekerjaan Lanjutan}
+
+Realisasi pekerjaan pada proyek PT Makassar Trans mencakup beberapa fungsi yang telah tersedia, penyesuaian terhadap kebutuhan operasional, dan sejumlah hal yang masih perlu dikembangkan. Perbedaan antara hasil yang sudah tersedia dan pekerjaan lanjutan ditunjukkan pada Tabel~\ref{tab:matrans_hasil_pekerjaan}.
+
+\begin{longtblr}[
+  caption = {Hasil Pengerjaan dan Sisa Cakupan Pengembangan Proyek PT Makassar Trans},
+  label = {tab:matrans_hasil_pekerjaan}
+]{
+  colspec = {Q[l,m,2.8cm] Q[l,m,3.4cm] Q[l,m,3.2cm]},
+  hlines,
+  vlines,
+  row{1} = {font=\bfseries, halign=c},
+}
+  Area & Hasil yang Tersedia & Pekerjaan Lanjutan \\
+  Dokumen dan barang & Foto, draf OCR, dan Bulk Input. & Pengukuran akurasi OCR dan waktu kerja operator. \\
+  WhatsApp & Notifikasi tanda terima dan pengiriman nota COPY. & Tautan atau kode pelacakan pada notifikasi. \\
+  Nota tagihan & Pengiriman salinan nota melalui antrean. & Pengunduhan massal yang dikelompokkan berdasarkan relasi. \\
+  Jadwal & Pengurutan pemilih jadwal dan filter rute. & Pemisahan daftar jadwal mendatang dan riwayat. \\
+  Ekspor Excel & Total nominal untuk data yang diekspor. & Ringkasan terpisah berdasarkan status pembayaran. \\
+  Pencegahan duplikasi & Perlindungan pada beberapa alur utama. & Penerapan dan pengujian mekanisme yang seragam pada seluruh modul. \\
+\end{longtblr}
+
+\subsection{Pembelajaran dari Pengerjaan Proyek}
+
+Pekerjaan pada proyek PT Makassar Trans memberikan pemahaman bahwa pengembangan aplikasi mobile tidak berhenti pada pembuatan formulir. Hasil penyimpanan perlu diperiksa berdasarkan respons bisnis dari server. Data yang masih tersimpan sementara di perangkat juga harus dibedakan dari data yang telah dikonfirmasi tersimpan. Hal tersebut membuat pemahaman terhadap kontrak API, pengelolaan status aplikasi, dan pemulihan ketika jaringan terganggu menjadi bagian penting dari proses pengembangan.
+
+Penggunaan OCR menunjukkan bahwa hasil otomatis perlu diperlakukan sebagai bahan awal, bukan sebagai pengganti pemeriksaan operator. Model menghasilkan draf berdasarkan foto, sedangkan operator mencocokkan dan memperbaiki informasi sebelum digunakan sebagai data barang. Pengalaman ini memperlihatkan pentingnya menyediakan sumber dokumen dan kendali koreksi bagi pengguna.
+
+Integrasi WhatsApp memberikan pemahaman mengenai penggunaan antrean, identitas pekerjaan, dan ketidakpastian hasil pengiriman. Sementara itu, penggunaan MinIO memperlihatkan bahwa berkas dan metadata mempunyai fungsi yang berbeda dalam menjaga konsistensi layanan.
 
 %============================================================
+
 \section{PROYEK NEDO AGENTIC PLATFORM}
 %============================================================
 

@@ -1,66 +1,88 @@
 %============================================================
 % BAB 5: PENUTUP
-%   5.1 Kesimpulan
-%   5.2 Saran
-%       5.2.1 Saran untuk Perusahaan
-%       5.2.2 Saran untuk Pihak Kampus
-%       5.2.3 Saran untuk Mahasiswa Selanjutnya
-%       5.2.4 Saran Pengembangan [Proyek 1] (hapus jika tidak relevan)
-%       5.2.5 Saran Pengembangan [Proyek 2] (hapus jika tidak relevan)
 %============================================================
 \chapter{PENUTUP}
 
 \section{KESIMPULAN}
 
-Berdasarkan pelaksanaan kerja praktik yang dilakukan di \NamaPerusahaan\ selama
-periode \PeriodeKP, dapat disimpulkan sebagai berikut:
+Berdasarkan pelaksanaan kerja praktik yang dilaksanakan di \NamaPerusahaan\ selama periode \PeriodeKP, seluruh rangkaian perancangan, implementasi fitur, dan integrasi antarlayanan pada tiga proyek utama—yaitu \textbf{Proyek MonGrid}, \textbf{Proyek PT Makassar Trans}, dan \textbf{Proyek Nedo Agentic Platform}—telah berhasil diselesaikan dengan baik. Kesimpulan teknis yang dapat dirumuskan dari hasil pekerjaan tersebut adalah sebagai berikut:
 
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
-  \item Kesimpulan pertama berkaitan dengan pencapaian tujuan kerja praktik.
-  \item Kesimpulan kedua berkaitan dengan hasil proyek yang dikerjakan.
-  \item Kesimpulan ketiga berkaitan dengan kompetensi yang diperoleh selama
-        pelaksanaan kerja praktik.
+  \item \textbf{Proyek MonGrid:}
+  \begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
+    \item Berhasil membangun arsitektur akuisisi dan pemrosesan telemetri frekuensi tinggi berbasis pola \textit{Publish-Subscribe} (MQTT EMQX $\rightarrow$ \textit{Producer} $\rightarrow$ RabbitMQ $\rightarrow$ \textit{Consumer}) yang dipadukan dengan persistensi multi-penyimpanan (\textit{Polyglot Persistence} pada PostgreSQL, Redis, dan InfluxDB).
+    \item Berhasil mengimplementasikan mesin evaluasi alarm dinamis berbasis ekspresi logika NCalc pada Redis tanpa membebani basis data relasional, arsitektur pencatatan ganda (\textit{dual-table log}) untuk log aktif dan arsip historis, mekanisme pemulihan otomatis (\textit{auto-off}), serta penutupan tiket perbaikan secara otomatis (\textit{auto-close work order}) via pesan peristiwa asinkron.
+    \item Berhasil mewujudkan modul pemetaan geografis (\textit{GIS Map View}) dengan algoritma penelusuran pohon hierarki topologi jaringan, kalkulasi agregasi status keparahan (\textit{status rollup}), deteksi fasilitas luring (\textit{offline rollup}), pengayaan geospasial pada log insiden, serta komponen penanda modular (\textit{composite markers}) pada Google Maps API.
+    \item Berhasil merancang dan menerapkan sistem kontrol akses perangkat karyawan (\textit{Employee Device Access RBAC}) berbasis penelusuran pohon transitif ke bawah (\textit{transitive downward tree traversal}) pada backend serta penegakan pembatasan aset di sisi antarmuka (\textit{client-side gating}) guna melindungi data transformator dari pengguna non-otoritas.
+    \item Berhasil mengintegrasikan asisten percakapan cerdas multi-konteks (\textit{AI Chat}) berbasis orkestrasi perulangan agen (\textit{agentic loop}) dan pemanggilan instrumen domain (\textit{tool calling}) dengan pemancaran komponen visual di luar jalur teks (\textit{out-of-band widget emission}) dan mitigasi kebocoran data operasional.
+  \end{enumerate}
+
+  \item \textbf{Proyek PT Makassar Trans:}
+  \begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
+    \item Berhasil menyempurnakan alur pencatatan tanda terima pada aplikasi \textit{mobile} Flutter dengan validasi respons bisnis dua tingkat (memeriksa penanda keberhasilan dan ID entitas dari server), modul pemotongan citra interaktif berbasis empat sudut, serta mekanisme penyimpanan draf lokal sementara (\textit{offline draft storage}) yang menjamin ketahanan transmisi berkas saat jaringan terputus tanpa risiko duplikasi data.
+    \item Berhasil membangun antarmuka pengisian massal (\textit{Bulk Input}) pada aplikasi web yang menyandingkan penampil foto dokumen sumber secara berdampingan (\textit{side-by-side}), mendukung entri hingga 300 baris dalam satu transaksi transaksional ACID, penomoran kode barang otomatis berkesinambungan, serta kalkulasi otomatis kubikasi dan tonase.
+    \item Berhasil mengintegrasikan layanan \textit{worker} OCR asinkron berbasis model visi lokal melalui Ollama untuk mengekstraksi dimensi dan koli muatan dari foto dokumen fisik, dengan penegakan pola verifikasi operator (\textit{Human-in-the-Loop}) sebagai pengendali akhir keabsahan data sebelum disimpan ke basis data produksi.
+    \item Berhasil mengimplementasikan layanan distribusi dokumen operasional terotomasi berbasis pustaka Baileys WhatsApp, mencakup pengiriman notifikasi PDF tanda terima seketika, pengiriman salinan nota tagihan (COPY), serta pengelolaan antrean pesan dengan mesin keadaan (\textit{state machine}) dan dasbor pemantauan terpadu.
+    \item Berhasil menerapkan arsitektur pemisahan penyimpanan berkas objek biner terpusat menggunakan MinIO \textit{Object Storage} dengan isolasi kredensial di balik API dan penegakan kebijakan retensi dokumen terjadwal.
+  \end{enumerate}
+
+  \item \textbf{Proyek Nedo Agentic Platform:}
+  \begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
+    \item Berhasil melakukan migrasi evolutif dari purwarupa perantara Hermes Agent ke mesin eksekusi mandiri berkinerja tinggi \textit{In-House Native ReAct Loop Engine} berbasis \texttt{asyncio}, memangkas latensi inferensi menjadi satu lompatan jaringan (\textit{single-hop}), mengeliminasi konsumsi citra kontainer hingga 93\%, dan meniadakan beban pembersihan sesi manual.
+    \item Berhasil mengimplementasikan mekanisme klaim sewa tugas transaksional (\textit{Transactional Job Leasing}) menggunakan klausa \texttt{FOR UPDATE SKIP LOCKED} pada tabel PostgreSQL yang dipadukan dengan utas detak jantung periodik (\textit{heartbeat thread}) dan token generasi klaim (\textit{claim epoch fence}) guna mencegah kondisi balapan (\textit{race condition}) dan kegagalan gantung.
+    \item Berhasil merancang taksonomi perkakas 4-tier (\textit{In-Process Native}, \textit{Ephemeral Docker Sandbox}, \textit{Platform Remote FastMCP}, dan \textit{External Workspace MCP}) yang dilengkapi dengan protokol pembatasan direktori, semafor memori, serta autentikasi Bearer token pada jaringan kontainer internal.
+    \item Berhasil menerapkan algoritma pacing kognitif adaptif (\textit{Adaptive Cognitive Pacing}) dengan penyaringan alat penyelesai (\textit{finisher tools}) dan giliran darurat (\textit{emergency grace turn}) untuk menjamin terminasi deterministik pada setiap siklus eksekusi tugas agen.
+    \item Berhasil mengintegrasikan pencatatan konsumsi kuota token secara atomik ke dalam buku besar (\textit{token ledger}) terpusat dalam satuan millitoken, tata kelola portabel ruang kerja terdistribusi via MinIO S3 dengan proteksi \textit{zip-slip}, serta antarmuka operasional modern mencakup \textit{streaming} telemetri SSE, interaksi \textit{Human-in-the-Loop}, dan kantor virtual spasial 3D berbasis Three.js.
+  \end{enumerate}
+
+  \item \textbf{Kompetensi Rekayasa Perangkat Lunak:} Pelaksanaan kerja praktik memberikan pemahaman komprehensif mengenai penerapan arsitektur perangkat lunak skala industri, pemisahan batas tanggung jawab antarlayanan, manajemen transaksi dan persistensi data multi-model, orkestrasi proses asinkron dan antrean pekerjaan, penegakan standar kendali versi berbasis \textit{Conventional Commits}, serta kolaborasi profesional dalam tim rekayasa perangkat lunak modern.
 \end{enumerate}
 
 \section{SARAN}
 
-Setelah selesai menjalani kerja praktik dan mengerjakan laporan ini, penulis
-menyampaikan beberapa saran sebagai bahan masukan bagi berbagai pihak.
+Sebagai masukan konstruktif bagi pengembangan berkelanjutan di masa mendatang, penulis menyampaikan saran kepada pihak-pihak terkait sebagai berikut:
 
 \subsection{Saran untuk Perusahaan (\NamaPerusahaan)}
 
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
-  \item Saran bagi instansi terkait pengembangan sistem atau proses kerja
-        di masa mendatang.
-  \item Saran kedua untuk instansi.
+  \item Melakukan pengukuran operasional kuantitatif secara komparatif pada sistem yang telah berjalan untuk mengevaluasi efisiensi penghematan waktu pengisian data operator, rasio akurasi pembacaan OCR terhadap variasi nota tulisan tangan riil, serta latensi rata-rata pengiriman pesan WhatsApp pada beban puncak.
+  \item Mengembangkan pemantauan proaktif dan sistem peringatan otomatis (\textit{alerting system}) pada antrean \textit{worker} latar belakang dan kuota penyimpanan objek MinIO agar indikasi penumpukan antrean atau penyempitan ruang disk dapat terdeteksi sebelum memicu gangguan layanan.
+  \item Menerapkan mekanisme audit kontribusi dan dokumentasi teknis antarmuka API secara otomatis menggunakan integrasi perkakas dokumentasi terpadu (seperti Swagger/OpenAPI atau Postman Workspace) guna mempercepat proses orientasi (\textit{onboarding}) pengembang baru pada proyek multi-repositori.
 \end{enumerate}
 
 \subsection{Saran untuk Pihak Kampus (Politeknik Elektronika Negeri Surabaya)}
 
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
-  \item Saran bagi program studi terkait persiapan mahasiswa sebelum kerja praktik.
-  \item Saran kedua untuk program studi.
+  \item Memperkuat kurikulum praktikum dengan materi integrasi sistem terdistribusi, perancangan arsitektur berorientasi layanan (\textit{microservices}), penanganan konkurensi data tingkat lanjut (\textit{row-level locking} dan transaksi ACID), serta pengelolaan antrean pesan asinkron.
+  \item Memperkenalkan praktik standarisasi rekayasa perangkat lunak industri—seperti konvensi \textit{Conventional Commits}, alur percabangan Git berbasis fitur (\textit{Git flow}), peninjauan kode sejawat (\textit{peer review}), dan pengujian otomatis CI/CD—sejak semester awal sebelum mahasiswa melaksanakan kerja praktik.
 \end{enumerate}
 
 \subsection{Saran untuk Mahasiswa Selanjutnya}
 
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
-  \item Saran bagi mahasiswa yang akan melaksanakan kerja praktik di tempat
-        yang sama atau bidang yang serupa.
-  \item Saran kedua untuk mahasiswa selanjutnya.
+  \item Memahami alur logika bisnis dan tata kelola kontrak data secara menyeluruh sebelum melakukan modifikasi kode sumber pada sistem yang sedang berjalan (\textit{existing codebase}), karena perubahan kecil pada skema API dapat memicu kegagalan berantai pada aplikasi klien dan layanan latar belakang.
+  \item Memperlakukan skenario kegagalan jaringan, pembatalan proses, dan pengulangan transmisi data (\textit{idempotency}) sebagai bagian inheren dari perancangan arsitektur perangkat lunak, bukan sekadar penanganan pengecualian tambahan di akhir pengembangan.
+  \item Mencatat secara rinci setiap aktivitas implementasi, keputusan rekayasa, dan hasil pengujian sejak awal masa kerja praktik untuk mempermudah penyusunan laporan teknis yang akuntabel.
 \end{enumerate}
 
-% Hapus sub-section berikut jika tidak ada saran pengembangan per proyek.
-\subsection{Saran Pengembangan untuk [Nama Proyek 1]}
+\subsection{Saran Pengembangan untuk Proyek MonGrid}
 
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
-  \item Saran pengembangan teknis untuk proyek pertama ke depannya.
-  \item Saran kedua terkait pengembangan proyek pertama.
+  \item Mengembangkan algoritma deteksi anomali telemetri berbasis pembelajaran mesin adaptif guna melengkapi aturan ambang batas statis NCalc, sehingga sistem mampu mengidentifikasi degradasi performa peralatan listrik secara prediktif sebelum ambang batas kritis terlampaui.
+  \item Menambahkan pengujian integrasi otomatis untuk skenario pemulihan kegagalan koneksi broker MQTT dan InfluxDB guna memastikan mekanisme \textit{buffer} RabbitMQ tetap beroperasi optimal saat terjadi lonjakan data telemetri ribuan sensor secara serentak.
 \end{enumerate}
 
-\subsection{Saran Pengembangan untuk [Nama Proyek 2]}
+\subsection{Saran Pengembangan untuk Proyek PT Makassar Trans}
 
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
-  \item Saran pengembangan teknis untuk proyek kedua ke depannya.
-  \item Saran kedua terkait pengembangan proyek kedua.
+  \item Menyediakan tautan atau kode pelacakan ekspedisi (\textit{tracking URL}) yang disematkan langsung pada badan pesan WhatsApp tanda terima agar relasi pengirim dan penerima dapat memeriksa status perjalanan kargo secara mandiri.
+  \item Mengimplementasikan fitur pengunduhan berkas nota tagihan secara massal dalam format arsip terkompresi (\textit{ZIP archive}) yang dikelompokkan berdasarkan entitas relasi dan periode pelayaran kapal.
+  \item Melatih ulang (\textit{fine-tuning}) model visi OCR lokal menggunakan korpus citra surat jalan logistik riil untuk meningkatkan akurasi ekstraksi teks tulisan tangan dan tabel stempel non-standar.
+\end{enumerate}
+
+\subsection{Saran Pengembangan untuk Proyek Nedo Agentic Platform}
+
+\begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
+  \item Mengembangkan mekanisme \textit{checkpointing} status penalaran tingkat lanjut yang memungkinkan agen ReAct melanjutkan eksekusi dari langkah observasi terakhir saat terjadi kegagalan jaringan sementara tanpa harus mengulang siklus inferensi dari putaran awal.
+  \item Memperluas ekosistem integrasi perkakas FastMCP terkelola dengan menyediakan peladen analisis data analitik besar dan perkakas integrasi basis data graf guna mendukung alur kerja agen riset dan rekayasa data berskala kompleks.
 \end{enumerate}

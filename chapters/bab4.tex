@@ -1293,72 +1293,64 @@ Keandalan subsistem backend dan mesin ReAct terdistribusi didukung oleh penyedia
 Antarmuka pengguna dibangun menggunakan tumpukan teknologi modern:
 \begin{itemize}
   \item \textbf{React 19 \& Vite:} Fondasi pustaka antarmuka dengan performa kompilasi instan dan fitur perenderan konkuren modern.
-  \item \textbf{Tailwind CSS:} Kerangka kerja penataan gaya berbasis utilitas untuk memastikan konsistensi antarmuka pengguna dengan tema industri modern (*Dark/Light Mode*).
+  \item \textbf{Tailwind CSS:} Kerangka kerja penataan gaya berbasis utilitas untuk memastikan konsistensi antarmuka pengguna dengan tema industri modern (\textit{Dark/Light Mode}).
   \item \textbf{TanStack Query (React Query):} Pengelolaan sinkronisasi status server, \textit{caching}, dan mutasi data asinkron secara otomatis.
   \item \textbf{Zustand:} Manajemen status global ringan pada sisi klien untuk menyimpan status sesi, filter aktif, dan preferensi pengguna.
   \item \textbf{Three.js:} Pustaka grafis 3D berbasis WebGL yang digunakan untuk membangun antarmuka spasial kantor virtual (\textit{Live Virtual Office}).
 \end{itemize}
 
 \subsubsection{Katalog dan Rekrutmen Agen Cerdas}
-Pada modul manajemen agen, sistem menyediakan antarmuka katalog terpadu di mana operator dapat meninjau profil keahlian agen berdasarkan tingkat kapabilitas kognitif (\textit{Junior}, \textit{Senior}, \textit{Expert}). Setiap agen memiliki daftar keahlian (\textit{skills}) terkurasi, persona operasional, serta batasan parameter eksekusi yang transparan.
+Pada modul manajemen agen, sistem menyediakan halaman katalog dan rekrutmen terpadu (\textit{Hire agent}) yang memungkinkan operator meninjau beragam peran agen siap pakai beserta profil kapabilitasnya. Setiap kartu peran memuat deskripsi tanggung jawab, tingkat kapabilitas kognitif bawaan (\textit{Junior}, \textit{Senior}, atau \textit{Expert}), perangkat operasional yang aktif (\textit{toolsets} seperti \textit{Files}, \textit{Terminal}, \textit{Web}, \textit{Memory}, \textit{Skills}, \textit{Delegation}, dan \textit{Image generation}), serta daftar keahlian (\textit{skills}) terkurasi.
 
 \begin{figure}[H]
   \centering
-  \fbox{\begin{minipage}{0.92\textwidth}
-    \centering\vspace{1.8cm}
-    \textbf{\color{gray!80!black}[Tangkapan Layar: Antarmuka Katalog dan Rekrutmen Agen Cerdas]}\\\vspace{0.2cm}
-    \scriptsize Halaman katalog agen yang menampilkan kartu profil agen, tingkatan kapabilitas (Junior/Senior/Expert), daftar keahlian, dan tombol rekrutmen.
-    \vspace{1.8cm}
-  \end{minipage}}
-  \caption{Antarmuka Katalog dan Rekrutmen Agen Cerdas Nedo Platform}
+  {\color{gray!35}\setlength{\fboxsep}{0pt}\fbox{\includegraphics[width=0.94\textwidth,height=0.52\textheight,keepaspectratio]{assets/gambar/nedo/katalog_rekrutmen_agen.png}}}
+  \caption{Antarmuka Katalog Peran dan Rekrutmen Agen Cerdas Nedo Platform}
   \label{fig:nedo_agent_catalog}
 \end{figure}
 
-Sebagaimana dicadangkan pada Gambar~\ref{fig:nedo_agent_catalog}, antarmuka ini memungkinkan pengelola sistem untuk merekrut atau menonaktifkan agen secara instan tanpa perlu melakukan konfigurasi ulang pada peladen.
+Sebagaimana ditunjukkan pada Gambar~\ref{fig:nedo_agent_catalog}, operator dapat memilih peran agen dari katalog (seperti \textit{Backend developer}, \textit{DevOps engineer}, \textit{QA tester}, hingga \textit{Penetration tester}), lalu menyesuaikan nama, tingkat kapabilitas, penempatan meja kantor virtual (\textit{desk}), batas konsumsi token bulanan, hingga integrasi peladen MCP sebelum menekan tombol \textit{Hire} untuk mengaktifkan agen secara instan tanpa konfigurasi ulang peladen.
 
 \subsubsection{Streaming Telemetri Real-Time via Server-Sent Events (SSE)}
-Untuk memberikan visibilitas penuh terhadap proses penalaran agen, platform mengimplementasikan saluran transmisi aliran telemetri berbasis \textit{Server-Sent Events} (SSE) pada rute rincian eksekusi tugas. Berbeda dari metode \textit{polling} konvensional yang membebani server, SSE memungkinkan backend mengirimkan peristiwa eksekusi secara searah dan seketika saat terjadi mutasi status.
+Untuk memberikan visibilitas penuh terhadap proses penalaran dan eksekusi agen, platform mengimplementasikan saluran transmisi aliran telemetri berbasis \textit{Server-Sent Events} (SSE) pada halaman rincian tugas. Berbeda dari metode \textit{polling} konvensional yang membebani peladen, SSE memungkinkan backend mendorong pembaruan status, konsumsi token, dan jejak langkah eksekusi secara searah dan seketika ke antarmuka klien, yang ditandai melalui indikator konektivitas hijau \textit{Live} pada bilah atas.
 
 \begin{figure}[H]
   \centering
-  \fbox{\begin{minipage}{0.92\textwidth}
-    \centering\vspace{2.0cm}
-    \textbf{\color{gray!80!black}[Tangkapan Layar: Panel Pemantauan Telemetri ReAct Waktu Nyata]}\\\vspace{0.2cm}
-    \scriptsize Panel rincian pekerjaan yang menampilkan alur penalaran kognitif agen (\textit{thought reasoning}), pemanggilan alat, log eksekusi terminal, dan stempel waktu via SSE stream.
-    \vspace{2.0cm}
-  \end{minipage}}
-  \caption{Panel Pemantauan Telemetri Eksekusi ReAct Waktu Nyata}
+  {\color{gray!35}\setlength{\fboxsep}{0pt}\fbox{\includegraphics[width=0.94\textwidth,height=0.52\textheight,keepaspectratio]{assets/gambar/nedo/telemetri_streaming_react.png}}}
+  \caption{Panel Pemantauan Telemetri Eksekusi ReAct Waktu Nyata via SSE}
   \label{fig:nedo_telemetry_streaming}
 \end{figure}
 
-Komponen antarmuka pada Gambar~\ref{fig:nedo_telemetry_streaming} memetakan tiga aliran peristiwa utama:
+Sebagaimana terlihat pada Gambar~\ref{fig:nedo_telemetry_streaming}, antarmuka rincian tugas yang sedang berjalan memetakan informasi telemetri waktu nyata ke dalam tiga komponen utama:
 \begin{enumerate}[label=\alph*.]
-  \item \textbf{Penalaran Kognitif (\textit{Thought Steps}):} Menampilkan teks monolog internal model bahasa saat menganalisis masalah sebelum memutuskan tindakan.
-  \item \textbf{Pemanggilan Alat (\textit{Tool Execution}):} Menampilkan kartu pemanggilan alat secara interaktif lengkap dengan parameter masukan, waktu komputasi, dan status hasil observasi.
-  \item \textbf{Log Terminal Mentah (\textit{Live Terminal Output}):} Menampilkan keluaran teks langsung dari eksekusi perintah baris atau komputasi Python di dalam kontainer sandbox.
+  \item \textbf{Linimasa Status dan Meteran Anggaran Token:} Menampilkan progres siklus hidup tugas (\textit{Queued} $\rightarrow$ \textit{Working}), konsumsi token berjalan terhadap kuota tugas (misalnya \textit{3 of 10 tokens}) dilengkapi tombol penyesuaian batas (\textit{Change limit}) dan pembatalan tugas (\textit{Cancel job}).
+  \item \textbf{Panel Aktivitas Langkah ReAct (\textit{Activity}):} Menampilkan bilah estimasi progres (\textit{Progress}) serta daftar kronologis peristiwa eksekusi secara waktu nyata, mencakup pemuatan keahlian (\textit{Loaded the skill}), perintah terminal yang dijalankan pada sandbox (\textit{Ran}), langkah penalaran model beserta biaya tokennya (\textit{Thinking · N token}), hingga pemanggilan perkakas jarak jauh (\textit{Used Mcp call}) lengkap dengan status berhasil atau gagal.
+  \item \textbf{Panel Percakapan Langsung (\textit{Conversation}):} Menampilkan instruksi tugas (\textit{Brief}) beserta kolom masukan pesan (\textit{Message}) sehingga operator dapat memantau konteks dan memberikan arahan lanjutan kepada agen.
 \end{enumerate}
 
 \subsubsection{Mekanisme Interaksi Human-in-the-Loop (HITL)}
-Ketika agen menghadapi situasi dengan ambiguitas tinggi atau memerlukan konfirmasi instruksi pengguna, agen mengeksekusi perkakas klarifikasi (\texttt{ask\_requester}). Eksekusi ini memicu perubahan status tugas menjadi menunggu masukan operator dan memancarkan sinyal ke antarmuka klien.
+Untuk menjamin kendali penuh operator manusia pada keputusan kritis atau situasi ambigu, platform menyediakan mekanisme \textit{Human-in-the-Loop} (HITL) berlapis. Pada saat eksekusi berjalan, agen dapat memanggil perkakas klarifikasi (\texttt{ask\_requester}) maupun tertahan oleh kebijakan otorisasi perkakas (\textit{Tool Policies} dengan mode \textit{Needs approval}) yang memindahkan tugas ke antrean perhatian operator (\textit{Needs you}) serta menjeda perhitungan batas waktu eksekusi hingga keputusan diberikan.
 
 \begin{figure}[H]
   \centering
-  \fbox{\begin{minipage}{0.92\textwidth}
-    \centering\vspace{1.6cm}
-    \textbf{\color{gray!80!black}[Tangkapan Layar: Dialog Interaksi dan Otorisasi Human-in-the-Loop]}\\\vspace{0.2cm}
-    \scriptsize Kartu banner interaktif dan modal dialog persetujuan saat agen meminta klarifikasi atau otorisasi tindakan dari operator manusia.
-    \vspace{1.6cm}
-  \end{minipage}}
-  \caption{Antarmuka Dialog Otorisasi Human-in-the-Loop (HITL)}
+  {\color{gray!35}\setlength{\fboxsep}{0pt}\fbox{\includegraphics[width=0.94\textwidth,height=0.52\textheight,keepaspectratio]{assets/gambar/nedo/interaksi_hitl_konfirmasi.png}}}
+  \caption{Antarmuka Konfirmasi Tindakan dan Hasil Kerja Human-in-the-Loop (HITL)}
   \label{fig:nedo_hitl_dialog}
 \end{figure}
 
-Sistem antarmuka merender banner interaktif sebagaimana diilustrasikan pada Gambar~\ref{fig:nedo_hitl_dialog}, yang menghentikan sementara perhitungan batas waktu eksekusi. Operator dapat memberikan jawaban teks atau menyetujui parameter yang diajukan, yang kemudian diinjeksikan kembali ke dalam konteks percakapan agen untuk melanjutkan siklus penalaran hingga tuntas.
+Selain intervensi di tengah eksekusi, antarmuka rincian tugas juga merender kartu banner konfirmasi interaktif untuk tindakan lanjutan berisiko atau bernilai strategis. Sebagaimana ditunjukkan pada Gambar~\ref{fig:nedo_hitl_dialog}, setelah agen menyelesaikan analisis dan menghasilkan laporan terstruktur beserta berkas artefak (\texttt{REPORT.md}), sistem menyajikan banner konfirmasi persetujuan pembuatan laporan PDF rahasia (\textit{``Buat report PDF?''}) dengan pilihan eksplisit \textit{Tidak} atau \textit{Ya, generate PDF}. Operator juga dapat meninjau riwayat langkah pada panel \textit{Activity}, mempratinjau atau mengunduh berkas artefak pada panel \textit{Files}, serta menugaskan iterasi lanjutan melalui tombol \textit{Give a follow-up job}.
 
 \subsubsection{Papan Orkestrasi Run Board DAG dan Live Virtual Office}
-Untuk alur kerja multi-agen yang kompleks, platform menyediakan visualisasi graf dependensi tugas (\textit{Run Board DAG}). Visualisasi ini memetakan relasi ketergantungan antar-tugas (\textit{predecessors} dan \textit{successors}) beserta status penyelesaiannya secara grafis.
+Untuk alur kerja multi-agen yang kompleks, platform menyediakan modul orkestrasi \textit{Runs} dengan visualisasi graf dependensi tugas (\textit{Run Board DAG}). Visualisasi ini memetakan relasi ketergantungan antar-tugas (\textit{predecessors} dan \textit{successors}) beserta status penyelesaiannya secara grafis di bawah koordinasi agen manajer.
 
-Di samping itu, platform menyajikan inovasi visual berupa \textbf{Live Virtual Office} berbasis WebGL / Three.js. Komponen ini memodelkan tata letak ruang kerja fisik 3D, di mana setiap agen cerdas divisualisasikan sebagai avatar yang menempati meja kerja virtual. Status aktivitas agen (sedang berpikir, mengeksekusi alat di sandbox, atau dalam kondisi siaga) disinkronkan secara spasial melalui efek animasi dan pencahayaan dinamis, menghadirkan pengalaman pemantauan operasional yang interaktif dan modern bagi tim industri.
+\begin{figure}[H]
+  \centering
+  {\color{gray!35}\setlength{\fboxsep}{0pt}\fbox{\includegraphics[width=0.94\textwidth,height=0.52\textheight,keepaspectratio]{assets/gambar/nedo/live_virtual_office_3d.png}}}
+  \caption{Antarmuka Spasial \textit{Live Virtual Office} 3D Berbasis WebGL/Three.js}
+  \label{fig:nedo_virtual_office}
+\end{figure}
+
+Di samping itu, platform menyajikan inovasi visual berupa \textbf{Live Virtual Office} berbasis WebGL / Three.js sebagaimana ditunjukkan pada Gambar~\ref{fig:nedo_virtual_office}. Antarmuka ini mendukung peralihan mode tampilan denah dua dimensi (\textit{2D plan}), tiga dimensi isometrik (\textit{3D}), dan eksplorasi jalan kaki (\textit{Walk}), lengkap dengan pengelompokan ruangan kerja (\textit{Backend}, \textit{Frontend}, \textit{People}, \textit{Mobile}, \textit{DevOps}, \textit{Huddle}, dan \textit{Lounge}). Setiap agen cerdas direpresentasikan secara spasial beserta indikator status aktif pada panel kanan (bekerja di meja atau siaga di \textit{lounge}), ringkasan antrean perhatian \textit{Needs you} dan konsumsi token harian pada bilah atas, serta kontrol \textit{Replay timeline} di bagian bawah untuk memantau ulang dinamika operasional tim agen secara interaktif.
 
 
 %============================================================

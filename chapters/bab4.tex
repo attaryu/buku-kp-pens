@@ -188,18 +188,18 @@ MonGrid mengadopsi arsitektur terdistribusi berbasis layanan (\textit{service-or
 
 Berdasarkan rancangan teknis pada Gambar~\ref{fig:mongrid_arsitektur_teknis}, arsitektur MonGrid membagi alur data ke dalam lima lapisan logis fungsional:
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
-  \item \textbf{Lapisan Perangkat Lapangan (\textit{Edge Layer}):} Perangkat meter pintar (\textit{Power Meter}) dan sensor temperatur/kelembaban yang terpasang pada gardu membaca besaran listrik, lalu mempublikasikan data mentah secara periodik melalui protokol MQTT dengan jaminan pengiriman QoS 1 ke broker perantara.
+  \item \textbf{Lapisan Perangkat Lapangan (\textit{Edge Layer}):} Perangkat meter pintar (\textit{Power Meter}) dan sensor temperatur/kelembaban yang terpasang pada gardu membaca besaran listrik, lalu mempublikasikan data mentah secara periodik melalui protokol MQTT dengan jaminan pengiriman QoS 1 ke broker perantara~\cite{naik2017choice}.
   \item \textbf{Lapisan Akuisisi (\textit{Ingestion Broker}):} Broker MQTT \textbf{EMQX} bertindak sebagai gerbang terdepan penampung koneksi IoT lapangan skala besar.
   \item \textbf{Lapisan Pemrosesan Data (\textit{Processing Pipeline}):}
   \begin{itemize}[leftmargin=*, itemsep=0pt]
     \item \textbf{Mongrid Producer:} Layanan tanpa kepala (\textit{headless .NET service}) yang berlangganan topik MQTT, melakukan validasi struktur pesan, menyaring tipe paket, dan meneruskannya ke antrean pesan internal.
-    \item \textbf{RabbitMQ Broker:} Berperan sebagai penyangga durabel (\textit{durable buffer}) untuk menyerap lonjakan data (\textit{burst traffic}) dan mengisolasi lapisan penerimaan dari lapisan kalkulasi.
+    \item \textbf{RabbitMQ Broker:} Berperan sebagai penyangga durabel (\textit{durable buffer}) untuk menyerap lonjakan data (\textit{burst traffic}) dan mengisolasi lapisan penerimaan dari lapisan kalkulasi~\cite{rabbitmq_doc}.
     \item \textbf{Mongrid Consumer:} Mesin komputasi telemetri yang mengonsumsi antrean RabbitMQ, memetakan kode parameter meter, menghitung nilai rekayasa turunan, mengevaluasi aturan alarm, serta mendistribusikan data ke penyimpanan.
   \end{itemize}
   \item \textbf{Lapisan Penyimpanan (\textit{Polyglot Persistence}):}
   \begin{itemize}[leftmargin=*, itemsep=0pt]
-    \item \textbf{Redis (In-Memory Cache):} Menyimpan status telemetri terkini (\textit{latest device state}), status alarm aktif, serta *cache* konfigurasi pemetaan perangkat.
-    \item \textbf{InfluxDB (Time-Series Database):} Menyimpan deret waktu data pengukuran mentah dan teragregasi untuk kebutuhan analisis tren historis.
+    \item \textbf{Redis (In-Memory Cache):} Menyimpan status telemetri terkini (\textit{latest device state}), status alarm aktif, serta \textit{cache} konfigurasi pemetaan perangkat~\cite{kabakus2017performance}.
+    \item \textbf{InfluxDB (Time-Series Database):} Menyimpan deret waktu data pengukuran mentah dan teragregasi untuk kebutuhan analisis tren historis~\cite{influxdb_downsample}.
     \item \textbf{PostgreSQL (Relational Database):} Menyimpan data master hierarki aset gardu, konfigurasi akun pengguna, aturan batas alarm, log kejadian, dan tiket insiden.
   \end{itemize}
   \item \textbf{Lapisan Orkestrator dan Penyajian (\textit{Sync \& Presentation Layer}):}
@@ -313,7 +313,7 @@ Layanan \texttt{mongrid-backend} (.NET 9 Web API) berfungsi sebagai pintu gerban
 
 \subsubsection{Struktur Modular Clean Architecture}
 
-Repositori \texttt{mongrid-backend} disusun berdasarkan prinsip \textit{Clean Architecture} untuk memastikan dependensi kode hanya mengalir ke arah dalam (\textit{inward dependency}):
+Repositori \texttt{mongrid-backend} disusun berdasarkan prinsip \textit{Clean Architecture} untuk memastikan dependensi kode hanya mengalir ke arah dalam (\textit{inward dependency})~\cite{martin2017clean}:
 \begin{itemize}[leftmargin=*, itemsep=0pt]
   \item \textbf{Domain Layer:} Berisi definisi entitas inti bisnis tanpa ketergantungan pada \textit{framework} eksternal. Model mencakup \texttt{Device}, \texttt{DeviceRelation}, \texttt{AlarmRule}, \texttt{AlarmActiveLog}, \texttt{Ticket}, dan taksonomi pengukuran.
   \item \textbf{Application Layer:} Mendefinisikan antarmuka repositori, kelas DTO untuk request/response, logika validasi bisnis, serta implementasi layanan penanganan kueri dan manipulasi data.
@@ -431,8 +431,8 @@ Untuk menyelesaikan tantangan ini, antarmuka web MonGrid mengimplementasikan pol
 Karakteristik kedua kanal tersebut dirancang saling melengkapi:
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
   \item \textbf{Kanal REST API (Inisialisasi \& Rekonsiliasi):} Saat pengguna pertama kali membuka halaman pemantauan, aplikasi mengirimkan permintaan \texttt{POST /api/v1/device-data/pagination} ke Backend untuk memuat data awal (\textit{initial state}), data hierarki aset, dan konfigurasi tampilan.
-  \item \textbf{Kanal STOMP over WebSocket (Pembaruan Langsung):} Aplikasi membuka koneksi WebSocket persisten menuju plugin STOMP pada broker RabbitMQ dan berlangganan topik \texttt{/exchange/mongrid.update/device.\{deviceId\}}. Setiap kali terdapat paket telemetri baru dari \textit{DataSyncTask}, data didorong langsung (\textit{push}) ke peramban.
-  \item \textbf{Penggabungan State Tanpa Refetch (\textit{In-Memory Cache Patching}):} Nilai yang diterima dari kanal STOMP langsung digabungkan ke dalam \textit{cache} TanStack Query secara mutasional di memori peramban pengguna. Dengan mekanisme ini, nilai indikator, grafik, dan tabel diperbarui secara mulus tanpa memicu siklus kueri ulang (\textit{refetching}) ke server backend, sehingga mereduksi lalu lintas jaringan hingga 90\% pada kondisi pemantauan berkelanjutan.
+  \item \textbf{Kanal STOMP over WebSocket (Pembaruan Langsung):} Aplikasi membuka koneksi WebSocket persisten menuju plugin STOMP pada broker RabbitMQ dan berlangganan topik \texttt{/exchange/mongrid.update/device.\{deviceId\}}~\cite{stomp_spec, rabbitmq_doc}. Setiap kali terdapat paket telemetri baru dari \textit{DataSyncTask}, data didorong langsung (\textit{push}) ke peramban.
+  \item \textbf{Penggabungan State Tanpa Refetch (\textit{In-Memory Cache Patching}):} Nilai yang diterima dari kanal STOMP langsung digabungkan ke dalam \textit{cache} TanStack Query secara mutasional di memori peramban pengguna~\cite{tanstack_query}. Dengan mekanisme ini, nilai indikator, grafik, dan tabel diperbarui secara mulus tanpa memicu siklus kueri ulang (\textit{refetching}) ke server backend, sehingga mereduksi lalu lintas jaringan hingga 90\% pada kondisi pemantauan berkelanjutan.
 \end{enumerate}
 
 \subsubsection{Visualisasi Pemantauan Multi-Skala dan Dasbor Panel}
@@ -753,7 +753,7 @@ Modul pemetaan GIS dilengkapi dengan \textit{endpoint} terdedikasi untuk kebutuh
 
 \subsubsection{Rancang Bangun Antarmuka GIS Map dan Arsitektur Komponen Marker Modular}
 
-Pada antarmuka pengguna (\texttt{mongrid-frontend}), peta geospasial interaktif dibangun di atas Google Maps JavaScript API dengan memadukan mode tampilan terang (\textit{light mode}) dan gelap (\textit{dark mode}) yang responsif. Guna menjamin skalabilitas kode dan pemisahan tanggung jawab yang bersih, arsitektur modul peta dipecah ke dalam hierarki komponen modular sebagaimana dimodelkan pada Gambar~\ref{fig:mongrid_fe_gis_komponen}.
+Pada antarmuka pengguna (\texttt{mongrid-frontend}), peta geospasial interaktif dibangun di atas Google Maps JavaScript API~\cite{google_maps_js} dengan memadukan mode tampilan terang (\textit{light mode}) dan gelap (\textit{dark mode}) yang responsif. Guna menjamin skalabilitas kode dan pemisahan tanggung jawab yang bersih, arsitektur modul peta dipecah ke dalam hierarki komponen modular sebagaimana dimodelkan pada Gambar~\ref{fig:mongrid_fe_gis_komponen}.
 
 \begin{figure}[H]
   \centering
@@ -872,7 +872,7 @@ Modal rincian fasilitas (Gambar~\ref{fig:mongrid_fe_gis_map_detail}) menyajikan 
 
 \subsection{Rancang Bangun Kontrol Akses Perangkat Karyawan (Employee Device Access RBAC)}
 
-Dalam ekosistem infrastruktur kelistrikan skala enterprise, pengelolaan hak akses data pengguna tidak cukup hanya mengandalkan pembatasan menu aplikasi. Seorang teknisi operasional Gardu Wilayah Selatan tidak boleh melihat data beban atau alarm dari panel dan peralatan di Gardu Wilayah Utara, sementara manajer gedung hanya berhak mengakses aset yang berada di dalam lingkup gedungnya. Tim pengembang merancang dan mengimplementasikan sistem kontrol akses perangkat berbasis peran (\textit{Employee Device Access Role-Based Access Control} - RBAC) yang terintegrasi secara komprehensif ke seluruh lapisan arsitektur MonGrid.
+Dalam ekosistem infrastruktur kelistrikan skala enterprise, pengelolaan hak akses data pengguna tidak cukup hanya mengandalkan pembatasan menu aplikasi. Seorang teknisi operasional Gardu Wilayah Selatan tidak boleh melihat data beban atau alarm dari panel dan peralatan di Gardu Wilayah Utara, sementara manajer gedung hanya berhak mengakses aset yang berada di dalam lingkup gedungnya. Tim pengembang merancang dan mengimplementasikan sistem kontrol akses perangkat berbasis peran (\textit{Employee Device Access Role-Based Access Control} - RBAC) yang terintegrasi secara komprehensif ke seluruh lapisan arsitektur MonGrid~\cite{ferraiolo2001rbac, rfc7519_jwt}.
 
 \subsubsection{Pemodelan Struktur Data Hak Akses Non-Hierarkis}
 
@@ -1329,7 +1329,7 @@ Namun, seiring dengan meningkatnya kebutuhan platform untuk melayani banyak peng
 \end{enumerate}
 
 \subsubsection{Fase Optimalisasi Mandiri (\textit{In-House Specialization})}
-Menyadari keterbatasan tersebut, penulis bersama tim memutuskan untuk mengalihkan sistem ke mesin eksekusi mandiri, yaitu \textbf{In-House Native ReAct Engine} (\texttt{nedo.runner.engine}). Mesin ini dibangun secara murni menggunakan pustaka standar asinkron Python (\texttt{asyncio}) di dalam ruang proses internal Runner tanpa perantara runtime eksternal.
+Menyadari keterbatasan tersebut, penulis bersama tim memutuskan untuk mengalihkan sistem ke mesin eksekusi mandiri, yaitu \textbf{In-House Native ReAct Engine} (\texttt{nedo.runner.engine})~\cite{yao2023react}. Mesin ini dibangun secara murni menggunakan pustaka standar asinkron Python (\texttt{asyncio})~\cite{python_asyncio} di dalam ruang proses internal Runner tanpa perantara runtime eksternal.
 
 Desain arsitektur mandiri ini secara langsung menyelesaikan seluruh kelemahan mendasar yang dihadapi pada era purwarupa Hermes:
 \begin{enumerate}[label=\alph*.]
@@ -1389,7 +1389,7 @@ Sistem penugasan agen pada platform ini secara sengaja menggunakan antrean berba
 \end{enumerate}
 
 \subsubsection{Klaim Sewa Tugas Transaksional (\textit{Transactional Job Leasing})}
-Pemberian hak eksekusi tugas kepada runner diatur melalui mekanisme klaim atomik memanfaatkan klausa \texttt{FOR UPDATE SKIP LOCKED} pada PostgreSQL. Mekanisme ini bekerja melalui tahapan:
+Pemberian hak eksekusi tugas kepada runner diatur melalui mekanisme klaim atomik memanfaatkan klausa \texttt{FOR UPDATE SKIP LOCKED} pada PostgreSQL~\cite{postgresql_locking}. Mekanisme ini bekerja melalui tahapan:
 \begin{enumerate}[label=\arabic*.]
   \item Runner mencari pekerjaan tertua yang berada dalam status siap dieksekusi (\textit{queued}) dan telah melewati waktu tunda (\textit{not-before timestamp}).
   \item Klausa \texttt{FOR UPDATE SKIP LOCKED} mengunci baris pekerjaan tersebut secara eksklusif dalam satu transaksi tanpa memblokir runner lain. Runner lain yang mengeksekusi kueri serupa secara otomatis melompati baris yang sedang terkunci dan mengambil pekerjaan berikutnya secara nir-blokir (\textit{non-blocking concurrency}).
@@ -1509,7 +1509,7 @@ Karakteristik tiap lapisan pada Gambar~\ref{fig:tooling_taxonomy} dijabarkan seb
 \begin{enumerate}[label=\alph*.]
   \item \textbf{Tier 1 (In-Process Native Tools):} Berjalan langsung di dalam ruang proses Python runner tanpa beban latensi jaringan. Perkakas manipulasi berkas dilindungi dengan mekanisme sanitasi jalur direktori guna mencegah kerentanan penelusuran direktori (\textit{directory traversal attack}). Selain itu, perkakas analisis visual (\texttt{vision\_analyze}) dirancang asinkron dengan verifikasi \textit{magic bytes} biner dan penyaringan IP privat guna menangkal serangan \textit{Server-Side Request Forgery} (SSRF).
   \item \textbf{Tier 2 (Ephemeral Docker Sandbox):} Digunakan khusus untuk mengeksekusi kode Python atau perintah terminal bash yang dihasilkan oleh LLM. Kontainer ini dibuat secara dinamis menggunakan Docker SDK, berjalan tanpa antarmuka jaringan luar, dibatasi kuota memori 512 MB, dan dibatasi waktu eksekusi maksimal 60 detik sebelum dihancurkan secara otomatis.
-  \item \textbf{Tier 3 (Platform Remote FastMCP):} Layanan mikro independen yang menyajikan fungsionalitas komputasi berat di luar proses runner melalui protokol standar \textit{Model Context Protocol} berbasis Streamable HTTP/SSE:
+  \item \textbf{Tier 3 (Platform Remote FastMCP):} Layanan mikro independen yang menyajikan fungsionalitas komputasi berat di luar proses runner melalui protokol standar \textit{Model Context Protocol} berbasis Streamable HTTP/SSE~\cite{mcp_spec}:
     \begin{itemize}
       \item \texttt{nedo-browser-mcp}: Mengemas peramban berbasis Firefox dengan proteksi anti-fingerprint (\textit{Camoufox}) guna menavigasi situs modern yang terproteksi bot. Layanan ini membatasi antrean konkurensi tab secara asinkron menggunakan semafor memori untuk mencegah lonjakan konsumsi RAM.
       \item \texttt{nedo-web-extract-mcp}: Layanan ekstraksi konten berbasis FastMCP yang menggabungkan kemampuan penarikan awan (Firecrawl API), ekstraktor teks lokal nir-biaya (Trafilatura), dan sistem tembolok berkas dua tingkat berbasis SQLite (\textit{two-tier disk caching}) untuk efisiensi latensi dan biaya.
@@ -1616,7 +1616,7 @@ Pada modul manajemen agen, sistem menyediakan halaman katalog dan rekrutmen terp
 Sebagaimana ditunjukkan pada Gambar~\ref{fig:nedo_agent_catalog}, operator dapat memilih peran agen dari katalog (seperti \textit{Backend developer}, \textit{DevOps engineer}, \textit{QA tester}, hingga \textit{Penetration tester}), lalu menyesuaikan nama, tingkat kapabilitas, penempatan meja kantor virtual (\textit{desk}), batas konsumsi token bulanan, hingga integrasi peladen MCP sebelum menekan tombol \textit{Hire} untuk mengaktifkan agen secara instan tanpa konfigurasi ulang peladen.
 
 \subsubsection{Streaming Telemetri Real-Time via Server-Sent Events (SSE)}
-Untuk memberikan visibilitas penuh terhadap proses penalaran dan eksekusi agen, platform mengimplementasikan saluran transmisi aliran telemetri berbasis \textit{Server-Sent Events} (SSE) pada halaman rincian tugas. Berbeda dari metode \textit{polling} konvensional yang membebani peladen, SSE memungkinkan backend mendorong pembaruan status, konsumsi token, dan jejak langkah eksekusi secara searah dan seketika ke antarmuka klien, yang ditandai melalui indikator konektivitas hijau \textit{Live} pada bilah atas.
+Untuk memberikan visibilitas penuh terhadap proses penalaran dan eksekusi agen, platform mengimplementasikan saluran transmisi aliran telemetri berbasis \textit{Server-Sent Events} (SSE)~\cite{mdn_sse} pada halaman rincian tugas. Berbeda dari metode \textit{polling} konvensional yang membebani peladen, SSE memungkinkan backend mendorong pembaruan status, konsumsi token, dan jejak langkah eksekusi secara searah dan seketika ke antarmuka klien, yang ditandai melalui indikator konektivitas hijau \textit{Live} pada bilah atas.
 
 \begin{figure}[H]
   \centering
@@ -1654,7 +1654,7 @@ Untuk alur kerja multi-agen yang kompleks, platform menyediakan modul orkestrasi
   \label{fig:nedo_virtual_office}
 \end{figure}
 
-Di samping itu, platform menyajikan inovasi visual berupa \textbf{Live Virtual Office} berbasis WebGL / Three.js sebagaimana ditunjukkan pada Gambar~\ref{fig:nedo_virtual_office}. Antarmuka ini mendukung peralihan mode tampilan denah dua dimensi (\textit{2D plan}), tiga dimensi isometrik (\textit{3D}), dan eksplorasi jalan kaki (\textit{Walk}), lengkap dengan pengelompokan ruangan kerja (\textit{Backend}, \textit{Frontend}, \textit{People}, \textit{Mobile}, \textit{DevOps}, \textit{Huddle}, dan \textit{Lounge}). Setiap agen cerdas direpresentasikan secara spasial beserta indikator status aktif pada panel kanan (bekerja di meja atau siaga di \textit{lounge}), ringkasan antrean perhatian \textit{Needs you} dan konsumsi token harian pada bilah atas, serta kontrol \textit{Replay timeline} di bagian bawah untuk memantau ulang dinamika operasional tim agen secara interaktif.
+Di samping itu, platform menyajikan inovasi visual berupa \textbf{Live Virtual Office} berbasis WebGL / Three.js~\cite{threejs_doc} sebagaimana ditunjukkan pada Gambar~\ref{fig:nedo_virtual_office}. Antarmuka ini mendukung peralihan mode tampilan denah dua dimensi (\textit{2D plan}), tiga dimensi isometrik (\textit{3D}), dan eksplorasi jalan kaki (\textit{Walk}), lengkap dengan pengelompokan ruangan kerja (\textit{Backend}, \textit{Frontend}, \textit{People}, \textit{Mobile}, \textit{DevOps}, \textit{Huddle}, dan \textit{Lounge}). Setiap agen cerdas direpresentasikan secara spasial beserta indikator status aktif pada panel kanan (bekerja di meja atau siaga di \textit{lounge}), ringkasan antrean perhatian \textit{Needs you} dan konsumsi token harian pada bilah atas, serta kontrol \textit{Replay timeline} di bagian bawah untuk memantau ulang dinamika operasional tim agen secara interaktif.
 
 
 %============================================================

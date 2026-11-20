@@ -2,43 +2,186 @@
 % BAB 3: LANDASAN TEORI
 %   Flat list per teknologi/konsep, masing-masing jadi section.
 %   Sub-section untuk sub-topik teknologi jika diperlukan.
-%   Sesuaikan dengan teknologi yang digunakan pada proyek Anda.
 %============================================================
 \chapter{LANDASAN TEORI}
 
-Bab ini memuat teori-teori dan teknologi yang menjadi landasan dalam pelaksanaan
-kerja praktik di \NamaPerusahaan. Teori yang dibahas meliputi konsep dasar,
-arsitektur, kelebihan, dan implementasi umum dari teknologi-teknologi yang
-digunakan dalam proyek selama kerja praktik berlangsung.
+Bab ini memuat teori-teori, konsep arsitektur, protokol komunikasi, dan teknologi yang menjadi landasan dalam pelaksanaan kerja praktik di \NamaPerusahaan. Seluruh teori yang dibahas diekstraksi dari komponen yang diterapkan secara langsung pada tiga proyek kerja praktik, yaitu MonGrid, PT Makassar Trans, dan Nedo Agentic Platform.
 
-% -- Sesuaikan section berikut dengan teknologi yang digunakan ----------------
+%------------------------------------------------------------
+\section{ARSITEKTUR \textit{MICROSERVICES} DAN \textit{EVENT-DRIVEN}}
+%------------------------------------------------------------
 
-\section{[TEKNOLOGI/KONSEP PERTAMA]}
+Arsitektur \textit{microservices} merupakan pendekatan perancangan perangkat lunak yang memecah sistem monolitik menjadi sekumpulan layanan kecil yang mandiri, berfokus pada satu domain bisnis spesifik, serta dapat dikembangkan, diuji, dan diskalakan secara independen~\cite{newman2021building}. Pemisahan layanan ini membatasi dampak kegagalan (\textit{fault isolation}) dan mempermudah pemeliharaan sistem berskala besar.
 
-Jelaskan konsep dasar teknologi atau framework pertama yang digunakan.
-Sertakan definisi, tujuan penggunaan, dan bagaimana teknologi ini
-berkontribusi pada proyek selama kerja praktik.
+Pada proyek kerja praktik, pendekatan terdistribusi ini dipadukan dengan arsitektur berbasis peristiwa (\textit{event-driven architecture}), di mana layanan berkomunikasi secara asinkron melalui perantara pesan atau antrean alih-alih bergantung sepenuhnya pada panggilan sinkron yang saling mengunci~\cite{newman2021building}. MonGrid memisahkan komponen \textit{producer}, \textit{consumer}, layanan latar belakang, REST API, dan gerbang AI ke dalam layanan terpisah. PT Makassar Trans memisahkan aplikasi web operasional, worker OCR, dan layanan pengirim WhatsApp. Sementara itu, Nedo Agentic Platform membagi ekosistemnya menjadi layanan API Flask, \textit{worker} Celery, \textit{Nedo LLM Gateway}, \textit{Runner Daemon}, serta layanan mikro MCP dalam kontainer terisolasi.
 
-% Tambahkan sub-section jika teknologi ini memiliki sub-topik penting.
-\subsection{[Sub-topik jika diperlukan]}
+%------------------------------------------------------------
+\section{POLA \textit{PUBLISH-SUBSCRIBE}, RABBITMQ, AMQP, DAN STOMP}
+%------------------------------------------------------------
 
-Jelaskan sub-topik pertama dari teknologi ini.
+\subsection{Pola \textit{Publish-Subscribe} dan Broker RabbitMQ}
 
-\section{[TEKNOLOGI/KONSEP KEDUA]}
+\textit{Publish-Subscribe} (\textit{pub-sub}) adalah pola pertukaran pesan asinkron di mana pengirim (\textit{publisher}) mempublikasikan pesan ke sebuah perantara tanpa mengetahui identitas penerima, sementara penerima (\textit{subscriber}) berlangganan topik atau antrean yang diminati~\cite{rabbitmq_doc}. Pola ini menciptakan keterlepasan ikatan (\textit{decoupling}) antara produsen dan konsumen data sehingga sistem mampu menahan lonjakan lalu lintas (\textit{burst traffic}) tanpa kehilangan paket.
 
-Jelaskan konsep dasar teknologi atau framework kedua yang digunakan.
-Sertakan definisi, tujuan penggunaan, jika diperlukan.
+\textbf{RabbitMQ} merupakan \textit{message broker} sumber terbuka yang mengimplementasikan protokol \textbf{AMQP} (\textit{Advanced Message Queuing Protocol})~\cite{rabbitmq_doc}. Dalam model AMQP, pesan dikirimkan oleh produsen ke sebuah \textit{exchange}, lalu diarahkan ke \textit{queue} berdasarkan aturan \textit{binding} dan \textit{routing key}:
+\begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
+  \item \textbf{\textit{Topic Exchange}:} Mendistribusikan pesan ke satu atau beberapa antrean berdasarkan pencocokan pola \textit{routing key}. Pada MonGrid, pola ini digunakan pada \textit{exchange} \texttt{mongrid.update} untuk menyiarkan pembaruan telemetri (\texttt{device.\{deviceId\}}) dan peristiwa penonaktifan alarm (\texttt{alarm.cleared}).
+  \item \textbf{\textit{Fanout Exchange}:} Menyebarkan salinan pesan ke seluruh antrean yang terikat tanpa memperhatikan \textit{routing key}. Pada modul AI Chat MonGrid, \textit{fanout exchange} \texttt{hermes.control} dimanfaatkan untuk menyebarkan sinyal pembatalan aliran respons secara serentak.
+  \item \textbf{\textit{Direct Exchange} dan Pola RPC:} Mengarahkan pesan secara presisi ke antrean dengan kunci yang identik, termasuk mendukung pola \textit{Remote Procedure Call} (RPC) asinkron dan mekanisme \textit{mandatory return} (\texttt{BasicReturn}) ketika tidak ada konsumen yang terhubung.
+\end{enumerate}
 
-\section{[TEKNOLOGI/KONSEP KETIGA]}
+\subsection{Protokol STOMP over WebSocket}
 
-Jelaskan konsep dasar teknologi atau framework ketiga yang digunakan.
+\textbf{STOMP} (\textit{Simple/Streaming Text Oriented Messaging Protocol}) adalah protokol perpesanan berbasis teks yang ringan dan mudah diimplementasikan lintas bahasa pemrograman~\cite{stomp_spec}. STOMP menggunakan struktur bingkai (\textit{frame}) sederhana dengan perintah seperti \texttt{CONNECT}, \texttt{SEND}, \texttt{SUBSCRIBE}, dan \texttt{ACK} di atas koneksi TCP atau WebSocket.
 
-\subsection{[Sub-topik 3.x.1]}
+Melalui plugin Web-STOMP pada RabbitMQ, antarmuka web MonGrid yang dibangun dengan React dapat membuka koneksi WebSocket persisten menggunakan pustaka \texttt{@stomp/stompjs} dan berlangganan langsung ke topik \textit{exchange} RabbitMQ tanpa memerlukan lapisan proksi tambahan~\cite{rabbitmq_doc, stomp_spec}.
 
-Jelaskan sub-topik pertama.
+%------------------------------------------------------------
+\section{PROTOKOL MQTT DAN AKUISISI TELEMETRI IOT}
+%------------------------------------------------------------
 
-\subsection{[Sub-topik 3.x.2]}
+\textbf{MQTT} (\textit{Message Queuing Telemetry Transport}) adalah protokol komunikasi mesin-ke-mesin (\textit{machine-to-machine}) berbasis pola \textit{publish-subscribe} yang dirancang ringan untuk perangkat dengan keterbatasan sumber daya maupun jaringan yang tidak stabil~\cite{naik2017choice}. Dibandingkan protokol HTTP yang memiliki \textit{overhead} header besar pada setiap permintaan, MQTT menggunakan ukuran paket minimal dan mempertahankan koneksi TCP persisten sehingga efisien untuk pengiriman telemetri frekuensi tinggi.
 
-Jelaskan sub-topik kedua.
+Protokol MQTT menyediakan tiga tingkatan \textit{Quality of Service} (QoS) untuk menjamin keandalan pengiriman pesan, yaitu QoS 0 (\textit{at most once}), QoS 1 (\textit{at least once}), dan QoS 2 (\textit{exactly once})~\cite{naik2017choice}. Pada proyek MonGrid, perangkat \textit{power meter} dan sensor di gardu distribusi mengirimkan telemetri melalui broker MQTT \textbf{EMQX} menggunakan QoS 1. Selain itu, layanan \texttt{mongrid-producer} memanfaatkan fitur \textit{shared subscription} (\texttt{\$share/worker/...}) agar beban paket dari ribuan sensor terbagi secara merata ke seluruh instans \textit{producer} sebelum diterjemahkan ke antrean AMQP RabbitMQ.
 
-% Tambahkan section lebih lanjut sesuai jumlah teknologi yang digunakan.
+%------------------------------------------------------------
+\section{BASIS DATA RELASIONAL DAN \textit{IN-MEMORY}}
+%------------------------------------------------------------
+
+\subsection{Basis Data Relasional (PostgreSQL dan MySQL)}
+
+Sistem manajemen basis data relasional (\textit{Relational Database Management System} / RDBMS) menjamin integritas data melalui properti transaksi \textbf{ACID} (\textit{Atomicity, Consistency, Isolation, Durability}). Dalam proyek kerja praktik, \textbf{MySQL} digunakan pada proyek PT Makassar Trans untuk mengelola transaksi operasional tanda terima, rincian barang (\textit{Bulk Input}), serta antrean pencatatan status pengiriman, sedangkan \textbf{PostgreSQL} digunakan sebagai basis data transaksional utama pada MonGrid dan Nedo Agentic Platform.
+
+Selain penyimpanan relasional standar, PostgreSQL menyediakan fitur penguncian baris konkurensi tinggi melalui klausa \texttt{FOR UPDATE SKIP LOCKED} serta kunci transaksi \textit{advisory} (\texttt{pg\_advisory\_xact\_lock})~\cite{postgresql_locking}. Klausa \texttt{SKIP LOCKED} memungkinkan beberapa \textit{worker} mengakses tabel antrean secara bersamaan tanpa saling memblokir (\textit{non-blocking concurrency}), karena baris yang sedang dikunci oleh transaksi lain akan langsung dilewati. Mekanisme ini menjadi fondasi \textit{Transactional Job Leasing} pada Nedo Agentic Platform untuk menghindari masalah \textit{dual-write} dan duplikasi eksekusi agen.
+
+\subsection{Basis Data \textit{In-Memory} (Redis)}
+
+\textbf{Redis} (\textit{Remote Dictionary Server}) adalah penyimpanan struktur data di dalam memori utama (\textit{in-memory key-value store}) yang mendukung tipe data \textit{string}, \textit{hash}, \textit{list}, \textit{set}, dan \textit{stream}~\cite{kabakus2017performance}. Karena seluruh operasi baca dan tulis berlangsung langsung di RAM tanpa ketergantungan pada I/O disk secara sinkron, Redis memberikan latensi dalam skala sub-milidetik dan \textit{throughput} tinggi dibandingkan basis data berbasis disk tradisional.
+
+Pada MonGrid, Redis berfungsi ganda sebagai penyimpan status telemetri mutakhir (\textit{latest device state}), \textit{cache} pemetaan parameter meter, dan \textit{cache} aturan alarm sehingga evaluasi oleh \texttt{mongrid-consumer} berlangsung tanpa kueri ke PostgreSQL. Pada Nedo Agentic Platform, Redis dimanfaatkan sebagai broker pesan Celery serta penyalur sinyal pembangun (\textit{wakeup hints}) dan aliran telemetri eksekusi agen.
+
+%------------------------------------------------------------
+\section{BASIS DATA DERET WAKTU (\textit{TIME-SERIES}) DAN INFLUXDB}
+%------------------------------------------------------------
+
+Data sensor dan telemetri kelistrikan memiliki karakteristik penulisan berfrekuensi tinggi (\textit{append-only}), berurutan berdasarkan penanda waktu (\textit{timestamp}), dan jarang dimutakhirkan kembali. Basis data deret waktu (\textit{Time-Series Database} / TSDB) dioptimalkan khusus untuk pola beban kerja tersebut melalui kompresi kolom berbasis waktu dan indeks rentang waktu yang efisien.
+
+\textbf{InfluxDB} adalah basis data deret waktu sumber terbuka yang mengorganisasikan data ke dalam \textit{bucket}, \textit{measurement}, \textit{tag} (metadata terindeks seperti \texttt{device\_id}), dan \textit{field} (nilai pengukuran numerik)~\cite{influxdb_downsample}. Untuk menjaga kinerja kueri analitik jangka panjang tanpa membebani penyimpanan dari data mentah beresolusi detik, InfluxDB mendukung strategi \textbf{\textit{downsampling}} atau agregasi bertingkat (\textit{rollup}) ke jendela waktu yang lebih besar~\cite{influxdb_downsample}. Pada MonGrid, strategi ini diterapkan oleh \texttt{InfluxDbRollupTask} secara berjenjang mulai dari resolusi mentah (\texttt{raw}) hingga bulanan (\texttt{1M}) dengan jendela tumpang-tindih untuk menampung titik data yang datang terlambat.
+
+%------------------------------------------------------------
+\section{PENYIMPANAN OBJEK (\textit{OBJECT STORAGE}) DAN MINIO}
+%------------------------------------------------------------
+
+Penyimpanan objek (\textit{object storage}) mengelola berkas tidak terstruktur sebagai objek utuh yang dilengkapi pengenal unik dan metadata, alih-alih menggunakan hierarki direktori sistem berkas konvensional. Pendekatan ini memudahkan penskalaan kapasitas penyimpanan dan akses lintas layanan melalui protokol HTTP/REST.
+
+\textbf{MinIO} adalah peladen penyimpanan objek berkinerja tinggi yang kompatibel dengan antarmuka pemrograman \textbf{Amazon S3}~\cite{minio_doc}. Pengelolaan akses pada MinIO mengandalkan konsep \textit{bucket} sebagai wadah logis, kunci objek, serta kredensial akses terotentikasi. Pada PT Makassar Trans, MinIO memisahkan penyimpanan biner (foto dokumen asli, hasil pemotongan, dan dokumen PDF) dari metadata dan status proses yang dikelola basis data layanan web~\cite{minio_doc}. Pada Nedo Agentic Platform, MinIO dimanfaatkan untuk menyimpan artefak luaran kerja agen dan arsip \textit{snapshot} ruang kerja (\texttt{.tar.gz}) agar eksekusi tugas dapat berpindah lintas kontainer \textit{runner} secara portabel.
+
+%------------------------------------------------------------
+\section{REST API, \textit{CLEAN ARCHITECTURE}, DAN KONTROL AKSES}
+%------------------------------------------------------------
+
+\subsection{Gaya Arsitektur REST API}
+
+\textbf{REST} (\textit{Representational State Transfer}) adalah gaya arsitektur perangkat lunak terdistribusi yang dirumuskan oleh Roy Fielding untuk sistem hipermedia skala besar~\cite{fielding2000architectural}. Prinsip utama REST meliputi pemisahan klien-server, komunikasi nir-status (\textit{stateless}) di mana setiap permintaan memuat seluruh konteks yang diperlukan, dukungan tembolok (\textit{cacheability}), sistem berlapis (\textit{layered system}), serta antarmuka yang seragam (\textit{uniform interface}) berbasis URI dan metode HTTP standar (\texttt{GET}, \texttt{POST}, \texttt{PUT}, \texttt{DELETE}). Seluruh antarmuka pemrograman layanan web pada MonGrid (.NET 9), PT Makassar Trans (PHP), dan Nedo Agentic Platform (Flask~\cite{flask_doc}) mengadopsi prinsip RESTful JSON API.
+
+\subsection{Pola \textit{Clean Architecture}}
+
+\textbf{\textit{Clean Architecture}} yang diperkenalkan oleh Robert C. Martin menekankan pemisahan tanggung jawab perangkat lunak ke dalam lapisan-lapisan konsentris dengan aturan ketergantungan satu arah ke dalam (\textit{Dependency Rule})~\cite{martin2017clean}. Kode pada lapisan inti bisnis tidak boleh bergantung pada rincian teknis eksternal seperti kerangka kerja web, pustaka UI, atau penggerak basis data.
+
+Pada repositori \texttt{mongrid-backend}, pola ini diwujudkan ke dalam empat lapisan tegas: \textit{Domain Layer} (entitas inti), \textit{Application Layer} (antarmuka repositori, DTO, dan logika bisnis), \textit{Infrastructure Layer} (implementasi Entity Framework Core ke PostgreSQL), serta \textit{API Layer} (kontroler HTTP dan \textit{middleware}). Pemisahan ini memudahkan pengujian unit dan menjaga stabilitas aturan bisnis saat terjadi perubahan infrastruktur.
+
+\subsection{Autentikasi JWT dan Kontrol Akses Berbasis Peran (RBAC)}
+
+\textbf{JSON Web Token (JWT)} yang distandarkan dalam RFC 7519 adalah format token ringkas dan aman-URL untuk merepresentasikan klaim identitas dan otorisasi antara dua pihak yang ditandatangani secara kriptografis~\cite{rfc7519_jwt}. Struktur JWT terdiri atas tiga bagian yang dipisahkan titik (\textit{Header}, \textit{Payload}, dan \textit{Signature}), sehingga server dapat memverifikasi keaslian klaim pengguna tanpa menyimpan sesi di memori server (\textit{stateless authentication}).
+
+Untuk mengatur wewenang akses sumber daya, sistem menerapkan \textbf{\textit{Role-Based Access Control}} (RBAC) sebagaimana distandarkan oleh NIST~\cite{ferraiolo2001rbac}. Dalam model RBAC, hak izin tidak diberikan langsung ke akun individu secara terpisah-pisah, melainkan dikelompokkan ke dalam peran (\textit{roles}) yang ditugaskan kepada pengguna. Pada MonGrid, RBAC diperluas dengan skema granular \textit{Employee Device Access} yang memvalidasi klaim JWT di sisi server (\texttt{DeviceAccessFilterService}) dan memfilter visibilitas aset secara kondisional di sisi antarmuka pengguna.
+
+%------------------------------------------------------------
+\section{PEMROSESAN LATAR BELAKANG DAN EKSEKUSI ASINKRON}
+%------------------------------------------------------------
+
+Operasi yang membutuhkan waktu komputasi lama, seperti sinkronisasi data berkala, inferensi model bahasa, atau pengiriman pesan eksternal, tidak layak dijalankan di dalam siklus permintaan-respons HTTP sinkron karena dapat memicu \textit{timeout} dan menghambat antarmuka pengguna.
+
+\begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
+  \item \textbf{.NET \textit{Hosted Service} dan \texttt{BackgroundService}:} Pada ekosistem .NET 9, kelas abstrak \texttt{BackgroundService} yang mengimplementasikan antarmuka \texttt{IHostedService} menyediakan kerangka standar untuk menjalankan proses pekerja jangka panjang (\textit{worker service}) beserta mekanisme penghentian anggun (\textit{graceful shutdown}) melalui \texttt{CancellationToken}~\cite{dotnet_background}. MonGrid memanfaatkan pola ini pada layanan \texttt{mongrid-producer}, \texttt{mongrid-consumer}, dan \texttt{mongrid-bgservice}.
+  \item \textbf{Python \texttt{asyncio}:} Pustaka standar \texttt{asyncio} pada Python memungkinkan penulisan kode konkuren berbasis \textit{event loop} dan \textit{coroutine} (\texttt{async/await}) pada satu utas proses dengan efisiensi tinggi untuk operasi terikat I/O jaringan (\textit{I/O-bound})~\cite{python_asyncio}. Nedo Agentic Platform membangun mesin eksekusi agen mandiri (\texttt{nedo.runner.engine}) di atas \texttt{asyncio} untuk menangani komunikasi paralel ke LLM Gateway dan peladen MCP.
+  \item \textbf{Celery \textit{Distributed Task Queue}:} \textbf{Celery} adalah sistem antrean tugas terdistribusi asinkron untuk Python yang memisahkan penjadwalan (\textit{Celery Beat}) dan eksekusi (\textit{Celery Worker}) melalui broker pesan seperti Redis~\cite{celery_doc}. Pada Nedo Agentic Platform, Celery menangani penjadwalan berkala pemeliharaan sewa tugas (\textit{sweepers}), pembuatan faktur PDF, serta orkestrasi graf ketergantungan tugas multi-agen (DAG).
+\end{enumerate}
+
+%------------------------------------------------------------
+\section{KOMUNIKASI \textit{REAL-TIME} WEB (\textit{SERVER-SENT EVENTS})}
+%------------------------------------------------------------
+
+Untuk mendorong pembaruan data dari server ke peramban web tanpa mekanisme \textit{polling} berulang, standar HTML5 mendefinisikan \textbf{\textit{Server-Sent Events} (SSE)} beserta antarmuka klien \texttt{EventSource}~\cite{mdn_sse}. Berbeda dengan WebSocket yang bersifat dua arah (\textit{full-duplex}), SSE menggunakan koneksi HTTP standar yang dipertahankan terbuka untuk mengirimkan aliran teks searah dari server ke klien dengan tipe konten \texttt{text/event-stream}.
+
+Keunggulan utama SSE meliputi kesederhanaan protokol di atas HTTP/1.1 maupun HTTP/2, dukungan pemulihan koneksi otomatis, serta pelacakan posisi aliran melalui header \texttt{Last-Event-ID}~\cite{mdn_sse}. Karakteristik ini menjadikan SSE sangat cocok untuk mengalirkan potongan token respons AI secara bertahap (\textit{token streaming}) pada modul AI Chat MonGrid maupun mengalirkan telemetri langkah penalaran dan konsumsi token agen secara langsung pada antarmuka Nedo Agentic Platform.
+
+%------------------------------------------------------------
+\section{KECERDASAN BUATAN GENERATIF, LLM, VLM, DAN POLA \textit{REACT}}
+%------------------------------------------------------------
+
+\subsection{\textit{Large Language Model} (LLM) dan \textit{Tool Calling}}
+
+\textbf{\textit{Large Language Model}} (LLM) adalah model bahasa berbasis arsitektur \textit{Transformer} berskala besar yang dilatih pada korpus teks masif sehingga mampu memahami instruksi bahasa alami, melakukan penalaran kontekstual, dan menghasilkan teks terstruktur. Meskipun unggul dalam pemrosesan bahasa, LLM memiliki keterbatasan bawaan berupa pengetahuan yang statis pada waktu pelatihan dan potensi halusinasi ketika berhadapan dengan data faktual terkini.
+
+Untuk mengatasi keterbatasan tersebut, LLM modern dibekali kapabilitas pemanggilan perkakas (\textbf{\textit{tool calling}} / \textit{function calling})~\cite{schick2023toolformer}. Melalui mekanisme ini, model tidak menjawab secara langsung dari memori parametriknya, melainkan memilih fungsi atau API eksternal yang sesuai beserta argumen terstrukturnya, lalu memproses hasil keluaran fungsi tersebut sebagai fakta masukan untuk menyusun jawaban akhir.
+
+\subsection{Pola Penalaran dan Tindakan (\textit{ReAct})}
+
+\textbf{ReAct} (\textit{Reasoning and Acting}) adalah paradigma perancangan agen cerdas yang menggabungkan jejak penalaran verbal (\textit{Thought}) dengan eksekusi tindakan eksternal (\textit{Action}) dan pengamatan hasil (\textit{Observation}) secara berselang-seling dalam satu siklus perulangan~\cite{yao2023react}. Berbeda dari metode \textit{Chain-of-Thought} murni yang hanya menalar secara internal tanpa umpan balik lingkungan, siklus ReAct memungkinkan agen memverifikasi asumsi melalui perkakas eksternal, mendeteksi kegagalan langkah, serta menyesuaikan rencana kerja secara dinamis~\cite{yao2023react}. Pola ini menjadi inti dari mesin eksekusi \textit{In-House Native ReAct Engine} pada Nedo Agentic Platform dan siklus agen data pada AI Chat MonGrid.
+
+\subsection{\textit{Vision Language Model} (VLM) untuk OCR}
+
+\textbf{\textit{Vision Language Model}} (VLM) memperluas kapabilitas LLM dengan menambahkan penyandi visual sehingga model mampu memproses citra digital dan teks secara multimodal dalam satu konteks pemahaman. Pada proyek PT Makassar Trans, kemampuan multimodal ini dimanfaatkan melalui \textbf{Ollama Vision}~\cite{ollama_vision} untuk melakukan pembacaan dokumen tanda terima pengiriman barang (\textit{Optical Character Recognition} / OCR) yang memiliki variasi tata letak tulisan tangan maupun cetakan, menghasilkan draf terstruktur yang kemudian diverifikasi oleh operator.
+
+%------------------------------------------------------------
+\section{\textit{MODEL CONTEXT PROTOCOL} (MCP) DAN \textit{SANDBOXING}}
+%------------------------------------------------------------
+
+\textbf{\textit{Model Context Protocol}} (MCP) adalah standar terbuka berbasis JSON-RPC 2.0 yang dirancang untuk menstandarkan cara aplikasi AI dan agen cerdas terhubung dengan sumber data serta perkakas eksternal secara modular~\cite{mcp_spec}. Dalam arsitektur MCP, komponen dibagi menjadi \textit{Host/Client} (aplikasi agen yang menginisiasi koneksi) dan \textit{Server} (layanan terpisah yang mengekspos kapabilitas berupa \textit{Tools}, \textit{Resources}, dan \textit{Prompts}). Dengan protokol ini, integrasi alat bantu tidak perlu ditulis ulang secara khusus untuk setiap kerangka kerja agen.
+
+Pada Nedo Agentic Platform, protokol MCP diimplementasikan menggunakan pustaka \textbf{FastMCP} untuk layanan mikro internal (\texttt{nedo-browser-mcp}, \texttt{nedo-web-extract-mcp}, dan \texttt{kali-mcp}) maupun integrasi layanan eksternal. Selain itu, untuk mengeksekusi kode pemrograman dan perintah terminal yang dihasilkan oleh LLM secara aman, platform menerapkan \textbf{\textit{ephemeral Docker sandboxing}}~\cite{docker_doc}, yakni pembuatan kontainer sekali pakai dengan isolasi jaringan (\texttt{--network none}), pembatasan memori, dan batas waktu eksekusi ketat guna mencegah ancaman terhadap sistem induk.
+
+%------------------------------------------------------------
+\section{ANTARMUKA WEB MODERN, GIS, DAN VISUALISASI 3D}
+%------------------------------------------------------------
+
+\subsection{React, Manajemen Status Asinkron, dan Visualisasi Spasial}
+
+\textbf{React} adalah pustaka JavaScript deklaratif berbasis komponen untuk membangun antarmuka pengguna web interaktif dengan memanfaatkan \textit{Virtual DOM} dan mekanisme \textit{Hooks}~\cite{react_doc}. Pada MonGrid dan Nedo Agentic Platform, React 19 dipadukan dengan TypeScript, Vite, serta Tailwind CSS untuk menjaga konsistensi desain dan keamanan tipe data. Untuk menyinkronkan data dari REST API dengan pembaruan \textit{real-time} di memori peramban, kedua platform menggunakan \textbf{TanStack Query} yang menyediakan fitur tembolok otomatis, manajemen status pemuatan, serta pemutakhiran data secara mutasional (\textit{in-memory cache patching}) tanpa memicu permintaan ulang jaringan yang boros~\cite{tanstack_query}.
+
+Untuk kebutuhan pemetaan geografis pada modul \textit{GIS Map View} MonGrid, antarmuka memanfaatkan \textbf{Google Maps JavaScript API}~\cite{google_maps_js}. API ini menyediakan lapisan kanvas peta interaktif, proyeksi koordinat lintang-bujur, pengelompokan penanda (\textit{marker clustering}), serta pengelolaan penanda khusus (\textit{custom markers}) untuk memvisualisasikan sebaran aset gardu, gedung, panel, dan status alarm secara spasial.
+
+\subsection{Grafis 3D WebGL dan Three.js}
+
+\textbf{Three.js} adalah pustaka grafis 3D lintas peramban yang membungkus antarmuka pemrograman tingkat rendah WebGL menjadi abstraksi adegan (\textit{scene}), kamera, pencahayaan, geometri, dan material yang lebih ringkas~\cite{threejs_doc}. Pada Nedo Agentic Platform, Three.js (melalui ekosistem React Three Fiber) digunakan untuk merender antarmuka spasial \textit{Live Virtual Office} secara interaktif dalam mode denah 2D, isometrik 3D, maupun navigasi sudut pandang langsung.
+
+%------------------------------------------------------------
+\section{PENGEMBANGAN APLIKASI \textit{MOBILE} FLUTTER DAN POLA BLOC}
+%------------------------------------------------------------
+
+\textbf{Flutter} adalah kerangka kerja pengembangan aplikasi lintas platform yang memungkinkan kompilasi kode sumber tunggal berbasis bahasa Dart menjadi aplikasi natif Android maupun iOS dengan mesin perenderan grafis mandiri~\cite{flutter_architecture}. Dalam panduan arsitektur resminya, Flutter menganjurkan pemisahan tanggung jawab antara lapisan antarmuka (\textit{presentation}), logika bisnis (\textit{domain}), dan akses sumber data (\textit{data}) agar aplikasi mudah diuji dan dipelihara~\cite{flutter_architecture}.
+
+Untuk mengelola perubahan keadaan (\textit{state management}) secara prediktif pada aplikasi petugas lapangan PT Makassar Trans, digunakan pola **BLoC** (\textit{Business Logic Component})~\cite{bloc_library}. Pola BLoC memisahkan komponen tampilan dari logika pemrosesan bisnis dengan cara mengalirkan aksi pengguna sebagai peristiwa (\textit{events}) ke dalam komponen BLoC, yang kemudian memancarkan keadaan baru (\textit{states}) ke antarmuka secara reaktif melalui aliran data (\textit{stream})~\cite{bloc_library}.
+
+%------------------------------------------------------------
+\section{INTEGRASI LAYANAN PESAN WHATSAPP (BAILEYS)}
+%------------------------------------------------------------
+
+\textbf{Baileys} adalah pustaka sumber terbuka berbasis TypeScript/JavaScript yang mengimplementasikan protokol komunikasi WhatsApp Web secara langsung melalui koneksi \textit{WebSocket} tanpa memerlukan peramban web fisik (\textit{headless browser})~\cite{baileys_whatsapp}. Pendekatan berbasis soket ini membuat penggunaan memori dan CPU jauh lebih ringan dibandingkan otomasi peramban konvensional, sehingga sesuai dijalankan sebagai layanan pekerja kontainer di server. Pada PT Makassar Trans, Baileys dimanfaatkan untuk mengirimkan berkas PDF tanda terima dan salinan nota tagihan secara otomatis melalui antrean pengiriman yang dilengkapi pelacakan status dan mekanisme percobaan ulang.
+
+%------------------------------------------------------------
+\section{KONTAINERISASI, KONTROL VERSI, DAN CI/CD}
+%------------------------------------------------------------
+
+\subsection{Kontainerisasi dengan Docker}
+
+\textbf{Docker} adalah platform kontainerisasi yang mengemas aplikasi beserta seluruh pustaka, konfigurasi, dan dependensi sistem operasinya ke dalam satu unit terisolasi bernama \textit{container}~\cite{docker_doc}. Berbeda dari mesin virtual yang menjalankan sistem operasi tamu secara penuh, kontainer berbagi kernel sistem operasi induk sehingga memiliki ukuran citra lebih ramping dan waktu inisialisasi sangat cepat. Ketiga proyek kerja praktik memanfaatkan Docker dan \textit{Docker Compose} untuk menjamin keseragaman lingkungan pengembangan hingga produksi.
+
+\subsection{Sistem Kontrol Versi Git dan \textit{Conventional Commits}}
+
+\textbf{Git} adalah sistem kontrol versi terdistribusi (\textit{Distributed Version Control System}) yang melacak setiap revisi kode sumber serta mendukung kolaborasi pengembangan paralel melalui mekanisme percabangan (\textit{branching}) dan penggabungan (\textit{merging})~\cite{chacon2014pro}. Untuk menjaga keterbacaan histori perubahan di \NamaPerusahaan, tim pengembang menerapkan spesifikasi \textbf{\textit{Conventional Commits}}~\cite{conventional_commits} yang mewajibkan format pesan komit terstruktur (\texttt{<type>[scope]: <description>}, seperti \texttt{feat}, \texttt{fix}, \texttt{docs}, atau \texttt{refactor}).
+
+\subsection{Otomasi Pipeline dengan GitLab CI/CD}
+
+\textbf{GitLab CI/CD} adalah mekanisme integrasi dan pengiriman berkelanjutan yang mengotomatiskan tahapan pengujian, pembangunan citra (\textit{build}), hingga penerapan (\textit{deployment}) setiap kali terjadi perubahan pada repositori Git berdasarkan definisi berkas \texttt{.gitlab-ci.yml}~\cite{gitlab_cicd}. Penerapan pipeline terotomasi pada proyek MonGrid, PT Makassar Trans, dan Nedo Agentic Platform memastikan setiap pembaruan kode terverifikasi sebelum dirilis ke lingkungan operasional.

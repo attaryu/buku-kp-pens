@@ -5,7 +5,7 @@
 
 \section{KESIMPULAN}
 
-Berdasarkan pelaksanaan kerja praktik yang dilaksanakan di \NamaPerusahaan\ selama periode \PeriodeKP, seluruh rangkaian perancangan, implementasi fitur, dan integrasi antarlayanan pada tiga proyek utama—yaitu \textbf{Proyek MonGrid}, \textbf{Proyek PT Makassar Trans}, dan \textbf{Proyek Nedo Agentic Platform}—telah berhasil diselesaikan dengan baik. Kesimpulan teknis yang dapat dirumuskan dari hasil pekerjaan tersebut adalah sebagai berikut:
+Berdasarkan pelaksanaan kerja praktik yang dilaksanakan di \NamaPerusahaan\ selama periode \PeriodeKP, seluruh rangkaian perancangan, implementasi fitur, dan integrasi antarlayanan pada tiga proyek utama—yaitu \textbf{Proyek MonGrid}, \textbf{Proyek PT Makassar Trans}, dan \textbf{Proyek Nedo Agentic Platform}—telah berhasil dirancang, diimplementasikan, dan diverifikasi secara fungsional pada lingkungan pengujian. Kesimpulan teknis yang dapat dirumuskan dari hasil pekerjaan tersebut adalah sebagai berikut:
 
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
   \item \textbf{Proyek MonGrid:}
@@ -15,6 +15,7 @@ Berdasarkan pelaksanaan kerja praktik yang dilaksanakan di \NamaPerusahaan\ sela
     \item Berhasil mewujudkan modul pemetaan geografis (\textit{GIS Map View}) dengan algoritma penelusuran pohon hierarki topologi jaringan, kalkulasi agregasi status keparahan (\textit{status rollup}), deteksi fasilitas luring (\textit{offline rollup}), pengayaan geospasial pada log insiden, serta komponen penanda modular (\textit{composite markers}) pada Google Maps API.
     \item Berhasil merancang dan menerapkan sistem kontrol akses perangkat karyawan (\textit{Employee Device Access RBAC}) berbasis penelusuran pohon transitif ke bawah (\textit{transitive downward tree traversal}) pada backend serta penegakan pembatasan aset di sisi antarmuka (\textit{client-side gating}) guna melindungi data transformator dari pengguna non-otoritas.
     \item Berhasil mengintegrasikan asisten percakapan cerdas multi-konteks (\textit{AI Chat}) berbasis orkestrasi perulangan agen (\textit{agentic loop}) dan pemanggilan instrumen domain (\textit{tool calling}) dengan pemancaran komponen visual di luar jalur teks (\textit{out-of-band widget emission}) dan mitigasi kebocoran data operasional.
+    \item Berhasil memverifikasi keterpaduan fungsional layanan dan antarmuka pada lingkungan pengujian—mencakup pembaruan telemetri kanal ganda, evaluasi alarm dinamis hingga penutupan tiket otomatis, agregasi peta GIS, pembatasan akses perangkat, serta interaksi asisten percakapan cerdas—dengan batasan belum dilakukannya uji beban ribuan perangkat secara serentak.
   \end{enumerate}
 
   \item \textbf{Proyek PT Makassar Trans:}
@@ -28,11 +29,12 @@ Berdasarkan pelaksanaan kerja praktik yang dilaksanakan di \NamaPerusahaan\ sela
 
   \item \textbf{Proyek Nedo Agentic Platform:}
   \begin{enumerate}[label=\alph*., leftmargin=*, itemsep=0pt]
-    \item Berhasil melakukan migrasi evolutif dari purwarupa perantara Hermes Agent ke mesin eksekusi mandiri berkinerja tinggi \textit{In-House Native ReAct Loop Engine} berbasis \texttt{asyncio}, memangkas latensi inferensi menjadi satu lompatan jaringan (\textit{single-hop}), mengeliminasi konsumsi citra kontainer hingga 93\%, dan meniadakan beban pembersihan sesi manual.
+    \item Berhasil melakukan migrasi evolutif dari purwarupa perantara Hermes Agent ke mesin eksekusi mandiri berkinerja tinggi \textit{In-House Native ReAct Loop Engine} berbasis \texttt{asyncio}, memangkas latensi inferensi menjadi satu lompatan jaringan (\textit{single-hop}), mengeliminasi konsumsi citra kontainer hingga lebih dari 93\%, memangkas waktu \textit{provisioning} agen menjadi instan (0 ms), dan meniadakan beban pembersihan sesi manual.
     \item Berhasil mengimplementasikan mekanisme klaim sewa tugas transaksional (\textit{Transactional Job Leasing}) menggunakan klausa \texttt{FOR UPDATE SKIP LOCKED} pada tabel PostgreSQL yang dipadukan dengan utas detak jantung periodik (\textit{heartbeat thread}) dan token generasi klaim (\textit{claim epoch fence}) guna mencegah kondisi balapan (\textit{race condition}) dan kegagalan gantung.
     \item Berhasil merancang taksonomi perkakas 4-tier (\textit{In-Process Native}, \textit{Ephemeral Docker Sandbox}, \textit{Platform Remote FastMCP}, dan \textit{External Workspace MCP}) yang dilengkapi dengan protokol pembatasan direktori, semafor memori, serta autentikasi Bearer token pada jaringan kontainer internal.
     \item Berhasil menerapkan algoritma pacing kognitif adaptif (\textit{Adaptive Cognitive Pacing}) dengan penyaringan alat penyelesai (\textit{finisher tools}) dan giliran darurat (\textit{emergency grace turn}) untuk menjamin terminasi deterministik pada setiap siklus eksekusi tugas agen.
     \item Berhasil mengintegrasikan pencatatan konsumsi kuota token secara atomik ke dalam buku besar (\textit{token ledger}) terpusat dalam satuan millitoken, tata kelola portabel ruang kerja terdistribusi via MinIO S3 dengan proteksi \textit{zip-slip}, serta antarmuka operasional modern mencakup \textit{streaming} telemetri SSE, interaksi \textit{Human-in-the-Loop}, dan kantor virtual spasial 3D berbasis Three.js.
+    \item Berhasil memverifikasi keandalan komponen melalui pengujian otomatis terukur (60 pengujian unit utilitas \textit{runner}, 162 \textit{ratchet test} integrasi keamanan, 18 pengujian unit layanan \textit{Browser MCP}, dan 9 pengujian unit layanan \textit{Web Extract MCP}) serta verifikasi fungsional antarmuka operasional, aliran telemetri SSE, interaksi \textit{Human-in-the-Loop}, dan kantor virtual 3D pada lingkungan aplikasi.
   \end{enumerate}
 
   \item \textbf{Kompetensi Rekayasa Perangkat Lunak:} Pelaksanaan kerja praktik memberikan pemahaman komprehensif mengenai penerapan arsitektur perangkat lunak skala industri, pemisahan batas tanggung jawab antarlayanan, manajemen transaksi dan persistensi data multi-model, orkestrasi proses asinkron dan antrean pekerjaan, penegakan standar kendali versi berbasis \textit{Conventional Commits}, serta kolaborasi profesional dalam tim rekayasa perangkat lunak modern.
@@ -85,4 +87,5 @@ Sebagai masukan konstruktif bagi pengembangan berkelanjutan di masa mendatang, p
 \begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
   \item Mengembangkan mekanisme \textit{checkpointing} status penalaran tingkat lanjut yang memungkinkan agen ReAct melanjutkan eksekusi dari langkah observasi terakhir saat terjadi kegagalan jaringan sementara tanpa harus mengulang siklus inferensi dari putaran awal.
   \item Memperluas ekosistem integrasi perkakas FastMCP terkelola dengan menyediakan peladen analisis data analitik besar dan perkakas integrasi basis data graf guna mendukung alur kerja agen riset dan rekayasa data berskala kompleks.
+  \item Melakukan pengujian beban (\textit{load and stress testing}) secara menyeluruh untuk mengukur latensi penjadwalan sewa tugas, efisiensi penggunaan sumber daya, dan stabilitas konkurensi sistem ketika ratusan proses \textit{runner} aktif beroperasi secara simultan dalam jangka panjang.
 \end{enumerate}

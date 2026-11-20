@@ -949,6 +949,45 @@ Untuk mengisolasi visibilitas aset tersebut, antarmuka mengimplementasikan pola 
   \item \textbf{Penyaringan Agregasi Kesehatan Armada (\texttt{FleetHealthSection.tsx}):} Pada dasbor analitik armada (\textit{fleet overview}), komponen kartu ringkasan secara selektif mengecualikan metrik transformator dalam kalkulasi indeks kesehatan rata-rata, memastikan bahwa data sensitif aset antarwilayah tidak bocor ke pihak yang tidak berwenang.
 \end{enumerate}
 
+%------------------------------------------------------------
+\subsection{Pengujian dan Evaluasi}
+%------------------------------------------------------------
+
+Pengujian pada proyek MonGrid difokuskan pada verifikasi fungsional alur integrasi dan pemeriksaan antarmuka aplikasi pada lingkungan pengembangan dan pengujian, bukan pengujian beban skala penuh. Skenario pemeriksaan diarahkan pada jalur data utama yang memiliki risiko operasional tinggi, meliputi pengiriman telemetri waktu nyata, evaluasi aturan alarm dinamis, agregasi status pada peta geografis, penegakan hak akses aset per karyawan, serta respons asisten percakapan cerdas.
+
+Tabel~\ref{tab:mongrid_verifikasi_fungsional} merangkum hasil verifikasi fungsional yang diamati pada antarmuka aplikasi dan alur layanan, beserta batasan cakupannya.
+
+\begin{longtblr}[
+  caption = {Ringkasan Verifikasi Fungsional Proyek MonGrid},
+  label = {tab:mongrid_verifikasi_fungsional}
+]{
+  colspec = {Q[l,m,2.7cm] Q[l,m,3.8cm] Q[l,m,2.9cm]},
+  hlines,
+  vlines,
+  row{1} = {font=\bfseries, halign=c},
+}
+  Modul / Fitur & Skenario yang Diverifikasi & Batas Cakupan \\
+  Aliran Telemetri dan Dasbor Panel & Pembaruan nilai metrik kelistrikan secara langsung pada dasbor melalui kanal ganda (REST dan STOMP) tanpa memuat ulang halaman. & Menggunakan data uji/simulasi; belum mencakup uji beban ribuan sensor secara serentak. \\
+  Mesin Aturan Alarm dan Log Insiden & Pembuatan aturan ambang batas dinamis, pemicu alarm aktif, pemindahan otomatis ke tabel riwayat saat pulih, serta penutupan tiket otomatis. & Verifikasi siklus hidup pada skenario uji di lingkungan pengembangan. \\
+  Peta Geografis dan Agregasi Hierarki & Perhitungan agregasi status keparahan dan status luring dari tingkat panel hingga kawasan serta tampilan penanda komposit pada peta. & Diuji pada struktur topologi jaringan uji. \\
+  Kontrol Akses Perangkat Karyawan & Penugasan izin majemuk serta penyaringan visibilitas data dan tab transformator bagi operator tanpa izin transformator. & Verifikasi dilakukan pada akun peran pengguna representatif. \\
+  Asisten Percakapan Cerdas & Pemanggilan perkakas domain, penampilan komponen visual tanpa duplikasi, pembatalan aliran respons, dan pembatasan data sesuai hak akses. & Bergantung pada skenario percakapan uji dan ketersediaan layanan model bahasa. \\
+\end{longtblr}
+
+Hasil verifikasi tersebut menunjukkan bahwa keterpaduan antara layanan penerima telemetri, pemroses latar belakang, API, dan antarmuka pemantauan telah berjalan sesuai rancangan fungsional. Meskipun demikian, evaluasi ini masih memiliki keterbatasan karena belum tersedia pengukuran pengujian unit otomatis yang terdokumentasi secara menyeluruh maupun pengujian ketahanan sistem terhadap lonjakan data ribuan perangkat secara bersamaan dan pemulihan otomatis saat koneksi broker pesan atau basis data deret waktu terganggu.
+
+%------------------------------------------------------------
+\subsection{Pembelajaran dari Pengerjaan Proyek}
+%------------------------------------------------------------
+
+Pengerjaan proyek MonGrid memberikan sejumlah pembelajaran teknis yang penting dalam membangun sistem pemantauan infrastruktur kelistrikan waktu nyata:
+
+\begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
+  \item \textbf{Efektivitas \textit{Polyglot Persistence} dan Pemisahan Beban:} Pemisahan penyimpanan antara status terkini serta aturan evaluasi alarm di Redis, data deret waktu di InfluxDB, dan data relasional di PostgreSQL menjaga responsivitas sistem ketika data telemetri masuk secara berkelanjutan tanpa membebani basis data utama.
+  \item \textbf{Optimasi Lalu Lintas Antarmuka dengan Kanal Ganda:} Memadukan REST API untuk muatan data awal dengan aliran STOMP/WebSocket untuk memperbarui \textit{cache} memori di peramban terbukti menghindarkan antarmuka dari permintaan kueri berulang yang boros sumber daya.
+  \item \textbf{Konsistensi Penegakan Hak Akses Lintas Lapisan:} Pembatasan akses perangkat tidak cukup hanya diterapkan pada satu lapisan. Penegakan harus berjalan seragam mulai dari penyaringan kueri di \textit{backend}, perhitungan agregasi peta GIS, penyembunyian elemen komponen di \textit{frontend}, hingga pembatasan konteks perkakas pada asisten AI agar tidak terjadi kebocoran informasi aset sensitif.
+\end{enumerate}
+
 %============================================================
 \section{PROYEK PT MAKASSAR TRANS}
 %============================================================
@@ -1656,15 +1695,61 @@ Untuk alur kerja multi-agen yang kompleks, platform menyediakan modul orkestrasi
 
 Di samping itu, platform menyajikan inovasi visual berupa \textbf{Live Virtual Office} berbasis WebGL / Three.js~\cite{threejs_doc} sebagaimana ditunjukkan pada Gambar~\ref{fig:nedo_virtual_office}. Antarmuka ini mendukung peralihan mode tampilan denah dua dimensi (\textit{2D plan}), tiga dimensi isometrik (\textit{3D}), dan eksplorasi jalan kaki (\textit{Walk}), lengkap dengan pengelompokan ruangan kerja (\textit{Backend}, \textit{Frontend}, \textit{People}, \textit{Mobile}, \textit{DevOps}, \textit{Huddle}, dan \textit{Lounge}). Setiap agen cerdas direpresentasikan secara spasial beserta indikator status aktif pada panel kanan (bekerja di meja atau siaga di \textit{lounge}), ringkasan antrean perhatian \textit{Needs you} dan konsumsi token harian pada bilah atas, serta kontrol \textit{Replay timeline} di bagian bawah untuk memantau ulang dinamika operasional tim agen secara interaktif.
 
+%------------------------------------------------------------
+\subsection{Pengujian dan Evaluasi}
+%------------------------------------------------------------
 
-%============================================================
-\section{PENGUJIAN DAN VERIFIKASI FUNGSIONAL}
-%============================================================
+Pengujian pada proyek \textit{Nedo Agentic Platform} dilakukan secara bertahap seiring evolusi arsitektur sistem, mencakup pengujian unit terisolasi pada modul inti \textit{runner} dan layanan MCP, pengujian regresi (\textit{ratchet test}) untuk kontrak integrasi keamanan, evaluasi komparatif terhadap arsitektur \textit{runtime}, serta verifikasi fungsional antarmuka dan aliran telemetri pada lingkungan produksi. Pengujian dirancang untuk memastikan keandalan eksekusi siklus ReAct, konsistensi pencatatan kuota token, keamanan eksekusi perkakas, serta responsivitas interaksi \textit{Human-in-the-Loop} (HITL).
 
-\textit{[Bagian ini disiapkan untuk penyajian matriks pengujian dan verifikasi fungsional terpadu dari sistem yang dikembangkan pada tahap sinkronisasi akhir.]}
+Tabel~\ref{tab:nedo_catatan_verifikasi} merangkum catatan pengujian otomatis dan verifikasi komponen yang tercatat selama pengembangan proyek. Catatan ini menggambarkan cakupan verifikasi pada masing-masing modul beserta batasan konfigurasinya.
 
-%============================================================
-\section{EVALUASI DAN PEMBELAJARAN TEKNIS}
-%============================================================
+\begin{longtblr}[
+  caption = {Ringkasan Catatan Pengujian dan Verifikasi Proyek Nedo Agentic Platform},
+  label = {tab:nedo_catatan_verifikasi}
+]{
+  colspec = {Q[l,m,2.8cm] Q[l,m,3.8cm] Q[l,m,2.8cm]},
+  hlines,
+  vlines,
+  row{1} = {font=\bfseries, halign=c},
+}
+  Komponen / Modul & Bukti Pengujian yang Tercatat & Batas Cakupan \\
+  Utilitas \textit{runner} & 60 pengujian unit lulus (\textit{60/60 passed}) pada 8 Oktober 2026 setelah dekomposisi paket. & Menguji logika fungsi pembantu secara terisolasi tanpa ketergantungan kontainer penuh. \\
+  Integrasi \textit{Pentester Agent} & 162 \textit{ratchet test} lulus pada 19 Oktober 2026 setelah integrasi ke \textit{ReAct loop}, sinkronisasi OpenAPI, dan pelacakan token. & Memvalidasi konsistensi skema dan kontrak antarmuka, bukan pengujian penetrasi lapangan secara menyeluruh. \\
+  Layanan \textit{Browser MCP} & 18 pengujian unit lulus (\textit{18/18 passed}) dan pengujian \textit{end-to-end} otomasi peramban pada 21 Oktober 2026. & Dijalankan terhadap skenario halaman uji yang terkendali. \\
+  Layanan \textit{Web Extract MCP} & 9 pengujian unit lulus (\textit{9/9 passed}) serta verifikasi penugasan multi-langkah ekstraksi konten web pada 23 Oktober 2026. & Keberhasilan ekstraksi tetap bergantung pada aksesibilitas target URL dan ketersediaan API eksternal. \\
+  Antarmuka Operasional \& Telemetri & Verifikasi langsung fitur rekrutmen agen instan, aliran telemetri SSE, konfirmasi HITL, dan \textit{Live Virtual Office} 3D pada aplikasi produksi. & Verifikasi fungsional skenario representatif; belum mencakup uji beban ratusan agen konkuren secara bersamaan. \\
+\end{longtblr}
 
-\textit{[Bagian ini disiapkan untuk evaluasi ketercapaian teknis serta pembelajaran implementasi industri pada tahap akhir.]}
+Selain pengujian tingkat komponen, dilakukan evaluasi komparatif arsitektur \textit{runtime} antara purwarupa awal berbasis \textit{Hermes Agent} dan mesin eksekusi mandiri \textit{In-House Native ReAct Engine}. Ringkasan hasil evaluasi terukur dari transisi arsitektur tersebut disajikan pada Tabel~\ref{tab:nedo_komparasi_runtime}.
+
+\begin{longtblr}[
+  caption = {Evaluasi Komparatif Runtime Purwarupa Hermes dan Native ReAct Engine},
+  label = {tab:nedo_komparasi_runtime}
+]{
+  colspec = {Q[l,m,2.6cm] Q[l,m,3.3cm] Q[l,m,3.5cm]},
+  hlines,
+  vlines,
+  row{1} = {font=\bfseries, halign=c},
+}
+  Aspek Evaluasi & Purwarupa Hermes Agent & In-House Native ReAct Engine \\
+  Ukuran citra kontainer & 3,9 GB & Di bawah 250 MB (turun lebih dari 93\%) \\
+  Waktu \textit{provisioning} agen & Jeda 9--10 detik (status \textit{setting up}) & 0 ms (instan, langsung berstatus siap) \\
+  Lompatan jaringan inferensi & Multi-hop (\textit{Runner} $\rightarrow$ \textit{Hermes} $\rightarrow$ \textit{Gateway} $\rightarrow$ \textit{LLM}) & Single-hop (\textit{Runner} $\rightarrow$ \textit{Gateway} $\rightarrow$ \textit{LLM}) \\
+  Kapasitas konkurensi & Terbatas 10 konkurensi tugas per kontainer & Nir-status (\textit{stateless}), diskalakan horizontal sesuai CPU dan RAM \\
+  Pembersihan memori sesi & Memerlukan perintah pembersihan sesi manual per tugas & Otomatis dibersihkan oleh \textit{Garbage Collector} Python \\
+\end{longtblr}
+
+Hasil verifikasi menunjukkan bahwa integrasi antara \textit{In-House Native ReAct Engine}, mekanisme sewa tugas transaksional PostgreSQL, taksonomi perkakas 4-tier, tata kelola artefak MinIO, dan antarmuka \textit{streaming} SSE telah berfungsi secara terpadu. Meskipun demikian, evaluasi ini masih memiliki keterbatasan, yaitu belum dilakukannya pengujian beban menyeluruh untuk mengukur latensi penjadwalan dan stabilitas konkurensi pada skala ratusan \textit{runner} aktif secara simultan dalam jangka panjang. Di samping itu, sifat stokastik model bahasa tetap menuntut pengawasan batas anggaran putaran dan mekanisme otorisasi HITL pada tugas berisiko tinggi.
+
+%------------------------------------------------------------
+\subsection{Pembelajaran dari Pengerjaan Proyek}
+%------------------------------------------------------------
+
+Pengerjaan proyek \textit{Nedo Agentic Platform} memberikan sejumlah pembelajaran teknis yang mendalam dalam merancang sistem agen cerdas berskala produksi:
+
+\begin{enumerate}[label=\arabic*., leftmargin=*, itemsep=0pt]
+  \item \textbf{Keseimbangan antara Purwarupa Cepat dan Kedaulatan Arsitektur:} Pemanfaatan kerangka kerja eksternal seperti \textit{Hermes Agent} sangat efektif untuk memvalidasi kelayakan konsep di tahap awal riset. Namun, untuk kebutuhan \textit{multi-tenancy}, kontrol status yang presisi, dan latensi rendah di lingkungan produksi, membangun mesin eksekusi mandiri (\textit{in-house ReAct loop}) terbukti memberikan efisiensi sumber daya yang jauh lebih baik, meskipun dengan konsekuensi tanggung jawab pemeliharaan penuh oleh tim internal.
+  \item \textbf{Keandalan Orkestrasi Berbasis Transaksi ACID:} Pada sistem tugas AI yang berdurasi eksekusi panjang dan tidak dapat diprediksi, mengandalkan antrean pesan murni rentan terhadap masalah \textit{dual-write} dan kesalahan \textit{visibility timeout}. Memanfaatkan tabel PostgreSQL dengan klausa \texttt{FOR UPDATE SKIP LOCKED}, utas detak jantung (\textit{heartbeat}), serta pencatatan buku besar token dalam satu transaksi atomik memberikan kepastian status yang jauh lebih deterministik.
+  \item \textbf{Ergonomi Kognitif dalam Perancangan Perkakas Agen:} Keberhasilan agen otonom tidak hanya ditentukan oleh kemampuan model bahasa, melainkan juga oleh desain perkakasnya. Penyatuan alat serah terima dan penyelesaian menjadi satu protokol (\texttt{submit\_result}), penerapan fase \textit{Adaptive Cognitive Pacing} (25\%-50\%-25\%), serta penyaringan alat penutup di akhir putaran terbukti efektif mencegah kebingungan pengambilan keputusan (\textit{decision paralysis}) dan kegagalan semu akibat kehabisan giliran.
+  \item \textbf{Keamanan Berlapis pada Eksekusi Otonom:} Memberikan akses terminal, peramban, dan manipulasi berkas kepada agen cerdas menuntut penerapan isolasi keamanan sejak tingkat arsitektur, mulai dari pembatasan jaringan kontainer \textit{sandbox} (\texttt{--network none}), validasi \textit{magic bytes} dan proteksi SSRF pada alat ekstraksi maupun visi, pencegahan \textit{zip-slip} pada ekstraksi ruang kerja, hingga penegakan autentikasi \textit{Bearer token} pada seluruh peladen \textit{Remote FastMCP}.
+\end{enumerate}
